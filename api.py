@@ -17,12 +17,14 @@ import time
 dataframes = []
 
 # 获取从2020年到今天的每天数据，逐个添加到列表中
-start_date = pd.to_datetime('2023-12-01')
+start_date = pd.to_datetime('2023-11-28')
 end_date = pd.to_datetime('now')
 date_range = pd.date_range(start=start_date, end=end_date, freq='D')  # 生成日期范围
 for date in date_range:
     print(date)
     date_str = date.strftime('%Y%m%d')  # 将日期转换为字符串形式
+
+    df = pro.daily_info(trade_date=date_str, exchange='SZ,SH', fields='trade_date,ts_name,ts_code,com_count,amount')
     
     # 进行每分钟请求次数限制
     requests_count = 0
