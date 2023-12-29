@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from datetime import datetime, timedelta
 import tushare as ts
-ts.set_token('2839da8e840b42925531966efa5ae652898578ede7471c43a1e7239b')
+ts.set_token('7da7a271ad4586a92f459e277d81b66b7f216818d5dfb17e5c103144')
 pro = ts.pro_api()
 print(pro)
 #s=我给你的股票代码csv
