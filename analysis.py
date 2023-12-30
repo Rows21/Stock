@@ -21,6 +21,8 @@ class daily_in():
     def __init__(self, date, all_code, token='7da7a271ad4586a92f459e277d81b66b7f216818d5dfb17e5c103144') -> None:
         self.date_str = date.strftime('%Y%m%d')  # 将日期转换为字符串形式
         ts.set_token(token)
+        pro = ts.pro_api()
+
         self.amount_df = pro.daily_info(trade_date=self.date_str, exchange='SZ,SH', fields='trade_date,ts_name,ts_code,com_count,amount')
         self.up_df = pro.limit_list_d(trade_date=self.date_str, limit_type='U', fields='ts_code,trade_date,industry,name,limit,pct_chg,open_times,limit_amount,fd_amount,first_time,last_time,up_stat,limit_times')
         
@@ -83,20 +85,55 @@ class daily_in():
         return out1, out2
     
 class day20_in():
-    def __init__(self) -> None:
-        pass
-    
+    def __init__(self, date):
+        self.date_str = date.strftime('%Y%m%d')  # 将日期转换为字符串形式
+        ts.set_token(token)
+        pro = ts.pro_api()
+
+        # 提取交易日历
+        date_df = pro.trade_cal(exchange='SZSE', start_date='20200101', end_date=self.date_str)
+        opendate_df = date_df[date_df['is_open'] == 1]
+
+        # 取当前日期前20个交易日
+        self.cal20_list = opendate_df['cal_date'][:19].tolist()
+        self.pretrade20_list = opendate_df['pretrade_date'][:19].tolist()
+
+    def pre_close20(self,ts_code):
+        pre_close = pd.DataFrame(ts_code)
+        #for i, date in enumerate(self.cal20_list):
+        #    pre_close_meta = pro.daily(trade_date=date)
+        #    perday_close = pd.merge(ts_code,pre_close_meta,on='ts_code')
+        #    pre_close[self.pretrade20_list[i]] = perday_close['pre_close']
+        pre_close_meta = pro.daily(trade_date=self.cal20_list[-1])
+        pre20_close = pd.merge(ts_code,pre_close_meta,on='ts_code')
+
+        today_meta = pro.daily(trade_date=self.cal20_list[0])
+        today_close = pd.merge(ts_code,today_meta,on='ts_code')
+
+        pre_close['difference'] = today_close['close']/pre20_close['pre_close'] -1
+        up_df = pre_close[pre_close['difference'] > 0]
+
+        count_all = (up_df['difference'] > 0.20).sum()
+        return count_all
+
+
+
 if __name__ == '__main__':
-    time = pd.to_datetime('2023-11-28')
+    time = pd.to_datetime('2023-12-28')
     token = '7da7a271ad4586a92f459e277d81b66b7f216818d5dfb17e5c103144'
 
     ts.set_token(token)
     pro = ts.pro_api()
+    stock_code = all_stock()
+
+    # 前数据提取
+    pre20 = day20_in(time)
+    df_pre20 = pre20.pre_close20(stock_code)
 
     # 导入储存数据
     df = pd.read_csv('api.csv').iloc[:,1:]
 
-    stock_code = all_stock()
+    
     day = daily_in(time, stock_code, token=token)
     out1, out2 = day.algo1()
     
