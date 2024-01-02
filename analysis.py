@@ -53,7 +53,6 @@ class daily_in():
         
         # 前20日收盘均价
         past20_ma = pd.DataFrame({'Column': [10] * 5096})
-        
 
         # 判断
         count = (self.all_m['close'] > self.all_m['pre_close']).sum()
