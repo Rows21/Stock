@@ -3,10 +3,6 @@ import pandas as pd
 from datetime import datetime, timedelta
 import tushare as ts
 
-ts.set_token('7da7a271ad4586a92f459e277d81b66b7f216818d5dfb17e5c103144')
-pro = ts.pro_api()
-print(pro)
-
 def algo2():
     return out1, out2
 
@@ -18,7 +14,7 @@ def all_stock():
     return all
 
 class daily_in():
-    def __init__(self, date, all_code, token='7da7a271ad4586a92f459e277d81b66b7f216818d5dfb17e5c103144') -> None:
+    def __init__(self, date, all_code, token) -> None:
         self.date_str = date.strftime('%Y%m%d')  # 将日期转换为字符串形式
         ts.set_token(token)
         pro = ts.pro_api()
@@ -84,7 +80,7 @@ class daily_in():
         return out1, out2
     
 class day20_in():
-    def __init__(self, date):
+    def __init__(self, date, token):
         self.date_str = date.strftime('%Y%m%d')  # 将日期转换为字符串形式
         ts.set_token(token)
         pro = ts.pro_api()
@@ -113,26 +109,86 @@ class day20_in():
         up_df = pre_close[pre_close['difference'] > 0]
 
         count_all = (up_df['difference'] > 0.20).sum()
+
+        # 筛选涨跌幅
+        # 龙1-8
+        sorted_df = up_df.sort_values('difference', ascending=False)[:8]
+        # > 9%
+        count_9 = (up_df['difference'] > 0.09).sum()
+        # > 7%
+        count_7 = (up_df['difference'] > 0.07).sum()
+
         return count_all
 
+class limit_times():
+    def __init__(self, date, token):
+        
+        self.date_str = date.strftime('%Y%m%d')  # 将日期转换为字符串形式
+        ts.set_token(token)
+        pro = ts.pro_api()
 
+        # 提取交易日历
+        date_df = pro.trade_cal(exchange='SZSE', start_date='20200101', end_date=self.date_str)
+        opendate_df = date_df[date_df['is_open'] == 1]
+
+        # 拉取当天交易数据
+        # 涨版
+        up_df = pro.limit_list_d(trade_date=self.date_str, limit_type='U', fields='ts_code,trade_date,industry,name,close,limit,pct_chg,open_times,limit_amount,fd_amount,first_time,last_time,up_stat,limit_times')
+
+        # 涨停数
+        up_number = len(up_df)
+        
+        # 连板
+        # 最大值
+        limit_max = max(up_df['limit_times'])
+        param_list = []
+        for i in range(7):
+            if i < 6:
+                param_meta = up_df[up_df['limit_times'] == i+1]                
+            else:
+                param_meta = up_df[up_df['limit_times'] >= i+1]
+
+            # 统计连板数
+            param_list.append(len(param_meta))
+            print(param_meta)
+        
+        # 跌
+        down_df = pro.limit_list_d(trade_date=self.date_str, limit_type='D', fields='ts_code,trade_date,industry,name,limit,pct_chg,open_times,limit_amount,fd_amount,first_time,last_time,up_stat,limit_times')
+        # 跌停数
+        down_number = len(down_df)
+
+        # 炸
+        zha_df = pro.limit_list_d(trade_date=self.date_str, limit_type='Z', fields='ts_code,trade_date,industry,name,limit,pct_chg,open_times,limit_amount,fd_amount,first_time,last_time,up_stat,limit_times')
+        # 炸板率
+        zha_ratio = len(zha_df) / (up_number + len(zha_df))
+
+        # 连板溢价
+        # 拉取上个交易日数据
+        pretrade_date = opendate_df['pretrade_date'][0]
+        up_df_yes = pro.limit_list_d(trade_date=pretrade_date, limit_type='U', fields='ts_code,close')
+        left_join = pd.merge(up_df_yes, up_df, on='ts_code', how='inner')
+        # 涨幅均值
+        mean_up = np.mean(left_join['close_y']/left_join['close_x'] - 1)
+
+        
 
 if __name__ == '__main__':
     time = pd.to_datetime('2023-12-28')
-    token = '7da7a271ad4586a92f459e277d81b66b7f216818d5dfb17e5c103144'
+    token = '9984e48de95326daee87a2fee7843133f8efd93b25a554db88b0a8ef'
 
     ts.set_token(token)
     pro = ts.pro_api()
     stock_code = all_stock()
 
     # 前数据提取
-    pre20 = day20_in(time)
+    pre20 = day20_in(time, token)
     df_pre20 = pre20.pre_close20(stock_code)
 
     # 导入储存数据
     df = pd.read_csv('api.csv').iloc[:,1:]
 
-    
+    limit = limit_times(time, token)
+
     day = daily_in(time, stock_code, token=token)
     out1, out2 = day.algo1()
     
