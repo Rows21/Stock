@@ -6,7 +6,9 @@ import tushare as ts
 def algo2():
     return out1, out2
 
-def all_stock():
+def all_stock(token):
+    ts.set_token(token)
+    pro = ts.pro_api()
     data_sh = pro.stock_basic(exchange='SSE', list_status='L', fields='ts_code,symbol,name,area,industry,list_date')
     data_sz = pro.stock_basic(exchange='SZSE', list_status='L', fields='ts_code,symbol,name,area,industry,list_date')
     all = pd.concat([data_sh['ts_code'],data_sz['ts_code']])
@@ -15,7 +17,7 @@ def all_stock():
 
 class daily_in():
     def __init__(self, date, all_code, token) -> None:
-        self.date_str = date.strftime('%Y%m%d')  # 将日期转换为字符串形式
+        self.date_str = date
         ts.set_token(token)
         pro = ts.pro_api()
 
@@ -81,7 +83,7 @@ class daily_in():
     
 class day20_in():
     def __init__(self, date, token):
-        self.date_str = date.strftime('%Y%m%d')  # 将日期转换为字符串形式
+        self.date_str = date 
         ts.set_token(token)
         pro = ts.pro_api()
 
@@ -123,7 +125,7 @@ class day20_in():
 class limit_times():
     def __init__(self, date, token):
         
-        self.date_str = date.strftime('%Y%m%d')  # 将日期转换为字符串形式
+        self.date_str = date # 将日期转换为字符串形式
         ts.set_token(token)
         pro = ts.pro_api()
 
@@ -171,14 +173,14 @@ class limit_times():
         mean_up = np.mean(left_join['close_y']/left_join['close_x'] - 1)
 
         
-
 if __name__ == '__main__':
     time = pd.to_datetime('2023-12-28')
+    time = time.strftime('%Y%m%d') 
     token = '9984e48de95326daee87a2fee7843133f8efd93b25a554db88b0a8ef'
 
     ts.set_token(token)
     pro = ts.pro_api()
-    stock_code = all_stock()
+    stock_code = all_stock(token)
 
     # 前数据提取
     pre20 = day20_in(time, token)
