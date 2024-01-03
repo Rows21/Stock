@@ -19,16 +19,40 @@ class History_M(daily_in):
         return df
     
     def get_100mm(self, date_list):
-        df = pd.DataFrame(self.code)
-
+        
         start_date = date_list[-1]
-        # 前百日最高最低值
-        max100 = 100
-        min100 = 0
 
-        # 判断
-        count_max = (self.all_m['close'] > self.all_m['pre_close']).sum()
-        count_min = (self.all_m['close'] > self.all_m['pre_close']).sum()
+        # 重新拉取交易日历 100 trade days
+        cal = pro.trade_cal(exchange='SZSE', start_date=(pd.to_datetime(start_date) - timedelta(days=200)).strftime("%Y%m%d"), end_date=start_date)
+        trade_cal = cal[cal['is_open'] == 1]['pretrade_date'].unique()[:100]
+
+        df_100 = self.pre_close(trade_cal)
+        df = pd.DataFrame(df_100.iloc[:,0])
+
+        # 统计前百日极值
+        df['max_value'] = df_100.iloc[:,1:].apply(max, axis=1)
+        df['min_value'] = df_100.iloc[:,1:].apply(min, axis=1)
+
+        # new DF 100
+        df_extreme = pd.DataFrame()
+
+        # 开始循环统计当日的百日新高和百日新低值
+        for date in date_list.reverse():
+            daily_m = pro.daily(trade_date=date)
+
+            count_max = (daily_m['close'] > df['max_value']).sum()
+            count_min = (daily_m['close'] < df['min_value']).sum()
+            
+            # Save
+            #df_extreme[date] = 
+
+            # Update
+            df_100 = df_100.drop(df_100.columns[-1], axis=1)
+            df_100 = df_100.insert(1, date, daily_m['close'])
+
+            df['max_value'] = df_100.iloc[:,1:].apply(max, axis=1)
+            df['min_value'] = df_100.iloc[:,1:].apply(min, axis=1)
+
         return count_max, count_min
 
 
