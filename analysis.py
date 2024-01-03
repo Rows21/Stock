@@ -18,6 +18,7 @@ def all_stock(token):
 class daily_in():
     def __init__(self, date, all_code, token) -> None:
         self.date_str = date
+        self.code = all_code
         ts.set_token(token)
         pro = ts.pro_api()
 
