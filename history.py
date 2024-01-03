@@ -105,4 +105,5 @@ if __name__ == '__main__':
         df_pre_M = pre20.pre_close(date_list=date_list)
         df_pre_M.to_csv('pre_close_2year.csv')
     
+    # 市场情绪统计
     df_pre_MM100 = pre20.get_100mm(date_list=date_list)
