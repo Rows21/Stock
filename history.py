@@ -15,6 +15,9 @@ class History_M(daily_in):
         for date in date_list:
             print(date)
             daily_m = pro.daily(trade_date=date)
+            df_today = daily_m[['ts_code','close']]
+            df_today.columns = ['ts_code', date]
+            df = pd.merge(df_today, df, on='ts_code')
             df[date] = daily_m['close']
         return df
     
@@ -24,7 +27,7 @@ class History_M(daily_in):
 
         # 重新拉取交易日历 100 trade days
         cal = pro.trade_cal(exchange='SZSE', start_date=(pd.to_datetime(start_date) - timedelta(days=200)).strftime("%Y%m%d"), end_date=start_date)
-        trade_cal = cal[cal['is_open'] == 1]['pretrade_date'].unique()[:100]
+        trade_cal = cal[cal['is_open'] == 1]['pretrade_date'].unique()[:10]
 
         df_100 = self.pre_close(trade_cal)
         df = pd.DataFrame(df_100.iloc[:,0])
@@ -34,26 +37,42 @@ class History_M(daily_in):
         df['min_value'] = df_100.iloc[:,1:].apply(min, axis=1)
 
         # new DF 100
-        df_extreme = pd.DataFrame()
+        df_extreme = None
+        date_list.reverse()
 
         # 开始循环统计当日的百日新高和百日新低值
-        for date in date_list.reverse():
+        for date in date_list:
+            print(date)
             daily_m = pro.daily(trade_date=date)
 
-            count_max = (daily_m['close'] > df['max_value']).sum()
-            count_min = (daily_m['close'] < df['min_value']).sum()
+            df_compare = pd.merge(df, daily_m, on='ts_code')
+            count_max = (df_compare['close'] > df_compare['max_value']).sum()
+            count_min = (df_compare['close'] < df_compare['min_value']).sum()
             
             # Save
-            #df_extreme[date] = 
+            if df_extreme is None:
+                df_extreme = pd.DataFrame([[date, count_max, count_min]], columns=['date', 'max', 'min'])
+            else:
+                new_row = pd.Series([date, count_max, count_min], index=df_extreme.columns)
+
+                # 使用 loc() 方法将新行添加到 DataFrame
+                df_extreme.loc[len(df_extreme)] = new_row
 
             # Update
             df_100 = df_100.drop(df_100.columns[-1], axis=1)
-            df_100 = df_100.insert(1, date, daily_m['close'])
+            df_today = daily_m[['ts_code','close']]
+            df_today.columns = ['ts_code', date]
+            df_100 = pd.merge(df_today, df_100, on='ts_code')
 
             df['max_value'] = df_100.iloc[:,1:].apply(max, axis=1)
             df['min_value'] = df_100.iloc[:,1:].apply(min, axis=1)
+        
+        self.df_100 = df_100
 
-        return count_max, count_min
+        return df_extreme
+    
+    def m_emo(self):
+        return 1
 
 
 if __name__ == '__main__':
@@ -106,4 +125,10 @@ if __name__ == '__main__':
         df_pre_M.to_csv('pre_close_2year.csv')
     
     # 市场情绪统计
-    df_pre_MM100 = pre20.get_100mm(date_list=date_list)
+    if os.path.exists('./pre_MM100.csv'):
+        df_pre_MM100 = pd.read_csv('./pre_MM100.csv')
+    else:
+        df_pre_MM100 = pre20.get_100mm(date_list=date_list)
+        df_pre_MM100.to_csv('pre_MM100.csv')
+
+    
