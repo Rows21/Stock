@@ -6,9 +6,18 @@ import os
 
 # 取当前年份-1年的首个交易日至今为历史数据
 
-class History_M(daily_in):
+class History_M():
     def __init__(self, date, all_code, token):
-        super().__init__(date, all_code, token)
+        ts.set_token(token)
+        self.pro = ts.pro_api()
+
+        # 提取交易日历
+        date_df = pro.trade_cal(exchange='SZSE', start_date='20200101', end_date=date)
+        self.opendate_df = date_df[date_df['is_open'] == 1]
+
+        # 创建历史数据空表
+        self.df_upratio = pd.DataFrame(None, columns = ['date', '上涨数', '涨幅>2%', '涨幅中位', '涨幅均值', '新高', '新低', '>MA20'])
+        self.code = all_code
     
     def pre_close(self, date_list):
         df = pd.DataFrame(self.code)
@@ -40,7 +49,7 @@ class History_M(daily_in):
         df_extreme = None
         date_list.reverse()
 
-        # 开始循环统计当日的百日新高和百日新低值
+        # 开始循环统计当日的百日新高和百日新低值，以及其他数据
         for date in date_list:
             print(date)
             daily_m = pro.daily(trade_date=date)
@@ -71,112 +80,180 @@ class History_M(daily_in):
 
         return df_extreme
     
-    def get_emo(self):
-        
+    def get_hist(self):
+        for date in date_list:
+
+            daily_m = pro.daily(trade_date=date)
+            daily_param = [None] * 7
+            print(date)
+
+            # 上涨数
+            daily_m['difference'] = daily_m['close']/daily_m['pre_close'] -1
+            daily_param[0] = len(daily_m[daily_m['difference'] > 0])
+
+            # 涨幅 > 2%
+            daily_param[1] = len(daily_m[daily_m['difference'] > 0.02])
+
+            # 读入获取的百日新高新低值
+
+            # >MA20
+
+            # 客观指数
+
         return 1
 
 
 class History_L(limit_times):
     def __init__(self, date, token):
         super().__init__(date, token)
+        # 创建历史数据空表
+        self.df_limit = pd.DataFrame(None, columns = ['date', '成交量', 1,2,3,4,5,6,7,'7+', '涨停数', '跌停数', '炸板率', '连板高度', '连板股数', '连板溢价'])
 
     def get_hist(self, date_list):
-        # 创建历史数据空表
-        df_limit = None
-        
         for date in date_list:
+            print(date)
+            daily_param = [None] * 15
+
             # 拉取当天交易数据
+            # 当日成交量
+            amdf = pro.daily_info(trade_date=date, exchange='SZ,SH', fields='trade_date,ts_name,ts_code,com_count,amount')
+            daily_param[0] = amdf['amount'][0] + amdf['amount'][10]
+
             # 涨版
             up_df = pro.limit_list_d(trade_date=date, limit_type='U', fields='ts_code,trade_date,industry,name,close,limit,pct_chg,open_times,limit_amount,fd_amount,first_time,last_time,up_stat,limit_times')
 
             # 涨停数
             up_number = len(up_df)
+            daily_param[8] = up_number
+
+            # 连板股数
+            daily_param[-2] = len(up_df[up_df['limit_times'] != 0])
             
             # 连板
-            # 最大值
+            # 最大值, 连板高度
             limit_max = max(up_df['limit_times'])
-            param_list = []
-            for i in range(7):
-                if i < 6:
+            daily_param[-3] = limit_max
+            
+            for i in range(8):
+                if i <= 6:
                     param_meta = up_df[up_df['limit_times'] == i+1]                
                 else:
                     param_meta = up_df[up_df['limit_times'] >= i+1]
 
                 # 统计连板数
-                param_list.append(len(param_meta))
-                print(param_meta)
+                daily_param[i+1] = len(param_meta)
+                #print(param_meta)
             
             # 跌
             down_df = pro.limit_list_d(trade_date=date, limit_type='D', fields='ts_code,trade_date,industry,name,limit,pct_chg,open_times,limit_amount,fd_amount,first_time,last_time,up_stat,limit_times')
             # 跌停数
             down_number = len(down_df)
+            daily_param[10] = down_number
 
             # 炸
             zha_df = pro.limit_list_d(trade_date=date, limit_type='Z', fields='ts_code,trade_date,industry,name,limit,pct_chg,open_times,limit_amount,fd_amount,first_time,last_time,up_stat,limit_times')
             # 炸板率
             zha_ratio = len(zha_df) / (up_number + len(zha_df))
+            daily_param[11] = zha_ratio
 
             # 连板溢价
             # 拉取上个交易日数据
             pretrade_date = opendate_df['pretrade_date'][0]
             up_df_yes = pro.limit_list_d(trade_date=pretrade_date, limit_type='U', fields='ts_code,close')
             left_join = pd.merge(up_df_yes, up_df, on='ts_code', how='inner')
+
             # 涨幅均值
             mean_up = np.mean(left_join['close_y']/left_join['close_x'] - 1)
+            daily_param[-1] =mean_up
 
             # 历史当日数据统计
-
+            new_row = pd.Series([date]+daily_param, index=self.df_limit.columns)
             # 汇总
-
-        
-
-        return df_limit
+            self.df_limit.loc[len(self.df_limit)] = new_row
+        return self.df_limit
     
-    def get_emo(self):
-        
+    def get_emo(self, hist_df = None, date_list = None):
+        if hist_df is None:
+            self.get_hist(date_list)
+            hist_df = self.df_limit
+
         return 1
-    
-class Historu_S():
-    def __init__(self, token) -> None:
+
+class History_S():
+    def __init__(self, date, token):
         ts.set_token(token)
-        pro = ts.pro_api()
+        self.pro = ts.pro_api()
+
+        # 提取交易日历
+        date_df = pro.trade_cal(exchange='SZSE', start_date='20200101', end_date=date)
+        self.opendate_df = date_df[date_df['is_open'] == 1]
+
+        # 创建历史数据空表
+        self.df_upratio = pd.DataFrame(None, columns = ['date', '>100', '80-100', '60-80', '50-60', '40-50', '30-40', '20-30'])
 
     def get_hist(self, date_list, ts_code):
 
-        # 提取交易日历
-        date_df = pro.trade_cal(exchange='SZSE', start_date='20200101', end_date=self.date_str)
-        opendate_df = date_df[date_df['is_open'] == 1]
+        for date in date_list:
+            print(date)
+            daily_param_1 = [None] * 7
+            daily_param_2 = [None] * 8
+            # 取当前日期前20个交易日
+            cal20_list = self.opendate_df['cal_date'][:19].tolist()
+            pretrade20_list = self.opendate_df['pretrade_date'][:19].tolist()
 
-        # 取当前日期前20个交易日
-        self.cal20_list = opendate_df['cal_date'][:19].tolist()
-        self.pretrade20_list = opendate_df['pretrade_date'][:19].tolist()
+            # 拉取当天交易数据
+            pre_close = pd.DataFrame(ts_code)
 
-        pre_close = pd.DataFrame(ts_code)
-        #for i, date in enumerate(self.cal20_list):
-        #    pre_close_meta = pro.daily(trade_date=date)
-        #    perday_close = pd.merge(ts_code,pre_close_meta,on='ts_code')
-        #    pre_close[self.pretrade20_list[i]] = perday_close['pre_close']
-        pre_close_meta = pro.daily(trade_date=self.cal20_list[-1])
-        pre20_close = pd.merge(ts_code,pre_close_meta,on='ts_code')
+            pre_close_meta = pro.daily(trade_date=cal20_list[-1])
+            pre20_close = pd.merge(ts_code,pre_close_meta,on='ts_code')
 
-        today_meta = pro.daily(trade_date=self.cal20_list[0])
-        today_close = pd.merge(ts_code,today_meta,on='ts_code')
+            today_meta = pro.daily(trade_date=cal20_list[0])
+            today_close = pd.merge(ts_code,today_meta,on='ts_code')
 
-        pre_close['difference'] = today_close['close']/pre20_close['pre_close'] -1
-        up_df = pre_close[pre_close['difference'] > 0]
+            pre_close['difference'] = today_close['close']/pre20_close['pre_close'] -1
+            up_df = pre_close[pre_close['difference'] > 0]
 
-        count_all = (up_df['difference'] > 0.20).sum()
+            # >100
+            daily_param_1[0] = len(up_df[up_df['difference'] >= 1.0])
+            # 80-100
+            daily_param_1[1] = len(up_df[(up_df['difference'] >= 0.80) & (up_df['difference'] < 1.0)])
+            # 60-80
+            daily_param_1[2] = len(up_df[(up_df['difference'] >= 0.60) & (up_df['difference'] < 0.80)])
+            # 50-60
+            daily_param_1[3] = len(up_df[(up_df['difference'] >= 0.50) & (up_df['difference'] < 0.60)])
+            # 40-50
+            daily_param_1[4] = len(up_df[(up_df['difference'] >= 0.40) & (up_df['difference'] < 0.50)])
+            # 30-40
+            daily_param_1[5] = len(up_df[(up_df['difference'] >= 0.30) & (up_df['difference'] < 0.40)])
+            # 30-40
+            daily_param_1[6] = len(up_df[(up_df['difference'] >= 0.20) & (up_df['difference'] < 0.30)])
 
-        # 筛选涨跌幅
-        # 龙1-8
-        sorted_df = up_df.sort_values('difference', ascending=False)[:8]
-        # > 9%
-        count_9 = (up_df['difference'] > 0.09).sum()
-        # > 7%
-        count_7 = (up_df['difference'] > 0.07).sum()
+            # 历史当日数据统计
+            new_row = pd.Series([date]+daily_param_1, index=self.df_upratio.columns)
+            # 汇总
+            self.df_upratio.loc[len(self.df_upratio)] = new_row
 
-        return count_all
+            # 筛选涨跌幅
+            # 龙1-8
+            sorted_df = up_df.sort_values('difference', ascending=False)[:8]
+            # > 9%
+            count_9 = (up_df['difference'] > 0.09).sum()
+            # > 7%
+            count_7 = (up_df['difference'] > 0.07).sum()
 
+            # 历史当日数据统计
+            new_row = pd.Series([date]+daily_param_2, index=self.df_limit.columns)
+            # 汇总
+            self.df_limit.loc[len(self.df_limit)] = new_row
+        return self.df_limit
+    
+    def get_emo(self, hist_df = None, date_list = None):
+        if hist_df is None:
+            self.get_hist(date_list)
+            hist_df = self.df_limit
+
+        return 1
+    
 if __name__ == '__main__':
 
     # 获取今天的日期
@@ -184,7 +261,7 @@ if __name__ == '__main__':
     formatted_time = time.strftime("%Y%m%d")
 
     # token
-    token = '544dc6cd793837eed33f3ae9b42bceadc3d08c983a0cff0990019074'
+    token = '92bf0e1d67440463c956caedfd6e32fe657f464bc149750d09756947'
     ts.set_token(token)
     pro = ts.pro_api()
 
@@ -218,6 +295,27 @@ if __name__ == '__main__':
     pre20 = History_M(formatted_time, stock_code, token=token)
 
     # 前数据提取
+    # 市场情绪统计
+    if os.path.exists('./pre_MM100.csv'):
+        df_pre_MM100 = pd.read_csv('./pre_MM100.csv')
+    else:
+        df_pre_MM100 = pre20.get_hist(date_list=date_list)
+        df_pre_MM100.to_csv('pre_MM100.csv')
+
+    # 容错率
+    short = History_S(formatted_time, token=token)
+    df_duanxian = short.get_hist(date_list=date_list, ts_code=stock_code)
+
+    # 连板
+    lianban = History_L(formatted_time, token=token)
+    if os.path.exists('./lianban.csv'):
+        df_lianban = pd.read_csv('./lianban.csv')
+    else:
+        df_lianban = lianban.get_hist(date_list)
+        df_lianban.to_csv('lianban.csv')
+
+    df_lbemo = lianban.get_emo(df_lianban)
+
     # 收盘价
     # 检查是否有文件
     if os.path.exists('./pre_close_2year.csv'):
@@ -226,11 +324,4 @@ if __name__ == '__main__':
         df_pre_M = pre20.pre_close(date_list=date_list)
         df_pre_M.to_csv('pre_close_2year.csv')
     
-    # 市场情绪统计
-    if os.path.exists('./pre_MM100.csv'):
-        df_pre_MM100 = pd.read_csv('./pre_MM100.csv')
-    else:
-        df_pre_MM100 = pre20.get_100mm(date_list=date_list)
-        df_pre_MM100.to_csv('pre_MM100.csv')
-
     
