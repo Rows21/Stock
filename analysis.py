@@ -11,7 +11,7 @@ def all_stock(token):
     pro = ts.pro_api()
     data_sh = pro.stock_basic(exchange='SSE', list_status='L', fields='ts_code,symbol,name,area,industry,list_date')
     data_sz = pro.stock_basic(exchange='SZSE', list_status='L', fields='ts_code,symbol,name,area,industry,list_date')
-    all = pd.concat([data_sh['ts_code'],data_sz['ts_code']])
+    all = pd.concat([data_sh['ts_code'], data_sz['ts_code']])
     #all_str = all.str.cat(sep=',')
     return all
 
@@ -177,7 +177,7 @@ class limit_times():
 if __name__ == '__main__':
     time = pd.to_datetime('2023-12-28')
     time = time.strftime('%Y%m%d') 
-    token = '9984e48de95326daee87a2fee7843133f8efd93b25a554db88b0a8ef'
+    token = 'abfd1859c8f279c5d5b90fd2966fd286845ad6106efac0bc10fbbf72'
 
     ts.set_token(token)
     pro = ts.pro_api()
