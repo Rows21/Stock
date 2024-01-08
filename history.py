@@ -4,6 +4,7 @@ import pandas as pd
 from analysis import *
 from datetime import datetime
 import os
+from tqdm import tqdm
 
 # 取当前年份-1年的首个交易日至今为历史数据
 
@@ -17,7 +18,7 @@ class History_M():
         self.opendate_df = date_df[date_df['is_open'] == 1]
 
         # 创建历史数据空表
-        self.df_upratio = pd.DataFrame(None, columns=['date', '上涨数', '涨幅>2%', '涨幅中位', '涨幅均值', '新高', '新低', '>MA20'])
+        self.df_upratio = pd.DataFrame(None, columns=['date', '成交量', '上涨数', '涨幅>2%', '涨幅中位', '涨幅均值', '新高', '新低', '>MA20', '客观指数'])
         self.code = all_code
     
     def pre_close(self, date_list):
@@ -48,34 +49,69 @@ class History_M():
 
     def get_hist(self, date_list, preclose_df):
 
-        for date in date_list:
+        date_list = date_list[::-1]
+        for i, date in tqdm(enumerate(date_list), total=len(date_list)):
+            # 在这里进行你的操作，例如打印索引和值
+            # print(f"Value: {date}")
 
             daily_m = pro.daily(trade_date=date)
-            daily_param = [None] * 7
-            print(date)
+            # 除去北京
+            daily_m = daily_m[~daily_m['ts_code'].str.contains('BJ')]
+            daily_param = [None] * 9
+            extracted_data = pd.DataFrame()
 
             # 成交额
-            # 当日成交量 - 除去北京
-            filtered_df = daily_m[~daily_m['ts_code'].str.contains('BJ')]
-            daily_param[0] = filtered_df['amount'].sum() /100000
+            # 当日成交量 -
+            daily_param[0] = daily_m['amount'].sum() /100000
 
             # 上涨数
-            daily_m['difference'] = daily_m['close']/daily_m['pre_close'] -1
-            daily_param[0] = len(daily_m[daily_m['difference'] > 0])
+            daily_param[1] = len(daily_m[daily_m['pct_chg'] > 0])
+
+            # 涨幅均值
+            daily_mean = np.mean(daily_m['pct_chg'])
+            daily_param[4] = daily_mean
+
+            # 涨幅中位
+            daily_median = np.median(daily_m['pct_chg'])
+            daily_param[3] = daily_median
 
             # 涨幅 > 2%
-            daily_param[1] = len(daily_m[daily_m['difference'] > 0.02])
+            daily_param[2] = len(daily_m[daily_m['pct_chg'] > 2.0])
 
             # 读入获取的百日新高新低值
-            row_index = preclose_df[preclose_df['trade_date'] == int(date)].index[0]
-            extracted_data = preclose_df[row_index : row_index + 100]
+            date_close = preclose_df[preclose_df['trade_date'] == int(date)]
+            row_index = date_close.index[0]
             
+            extracted_data.index = daily_m['ts_code']
+            extracted_data['max'] = preclose_df[row_index : row_index + 100].max()[1:]
+            extracted_data['min'] = preclose_df[row_index : row_index + 100].min()[1:]
+            extracted_data['today'] = date_close.transpose()
 
+            # 获取MA20
+            extracted_data['MA20'] = preclose_df[row_index : row_index + 20].mean()[1:]
+
+            # count 并保存
+            count_max = (extracted_data['today'] >= extracted_data['max']).sum()
+            daily_param[-4] = count_max
+            count_min = (extracted_data['today'] <= extracted_data['min']).sum()
+            daily_param[-3] = count_min
             # >MA20
+            count_ma20 = (extracted_data['today'] >= extracted_data['MA20']).sum()
+            daily_param[-2] = count_ma20
 
             # 客观指数
+            if date == date_list[0]:
+                index = 1000
+            else:
+                index = self.df_upratio['客观指数'][i-1] * (1 + 0.5 * (daily_median + daily_mean))
+            
+            daily_param[-1] = index
+            # 历史当日数据统计
+            new_row = pd.Series([date]+daily_param, index=self.df_upratio.columns)
+            # 汇总
+            self.df_upratio.loc[len(self.df_upratio)] = new_row
 
-        return 1
+        return self.df_upratio
 
 
 class History_L(limit_times):
@@ -285,6 +321,7 @@ if __name__ == '__main__':
     hist_m = History_M(formatted_time, stock_code, token=token)
     df_L = hist_m.get_hist(date_list, df_preclose)
     
+    df_L.to_csv('market_emo.csv')
     
     lianban = History_L(formatted_time, token=token)
     # 容错率
