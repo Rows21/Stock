@@ -43,10 +43,7 @@ if __name__ == '__main__':
 
     # 前数据提取
     # 市场情绪统计
-    if os.path.exists('./pre_close.csv'):
-        pre_close = pd.read_csv('./pre_close.csv')
+    if os.path.exists('./pre_MM100.csv'):
+        df_pre_MM100 = pd.read_csv('./pre_MM100.csv')
     else:
         pre20.get_100mm(date_list, all_stock)
-
-    df = pre_close.filter(regex='^(?!.*BJ)')
-    df.to_csv('pre_close.csv')
