@@ -129,13 +129,13 @@ class History_M():
 
             # >MA20
             df_20 = df_pre.iloc[index:(index+20),:]
-            daily_param[6] = (df_20.iloc[0] > df_20.mean()).sum() / len(daily_m) # /总股票数
+            daily_param[6] = (df_20.iloc[0] >= df_20.mean()).sum() / len(daily_m) # /总股票数
 
             # 客观指数
             if i == 0:
                 daily_param[7] = 1000 # 第一天1000
             else:
-                daily_param[7] = self.df_upratio.iloc[i-1]['>MA20'] * (1 + 0.5*(daily_param[2] + daily_param[3]))
+                daily_param[7] = self.df_upratio.iloc[i-1]['index'] * (1 + 0.5*(self.df_upratio.iloc[i-1]['涨幅中位'] + self.df_upratio.iloc[i-1]['涨幅均值'])/100)
             
             # 市场水温
             #heat = 0.00045 * amount + 4.5*daily_param[0]/(len(daily_m)*0.5) + 4.5*daily_param[1]/(len(daily_m)*0.5) + 500*(daily_param[2] + daily_param[3]) + 0.041*daily_param[4] + 0.01*daily_param[5] + 6.1*daily_param[6]/(len(daily_m)*0.5) + daily_param[7]
@@ -149,12 +149,80 @@ class History_M():
     def get_timeseries(self, df_hist):
         date_list = df_hist['date'].to_list()
         market_heat = [None] * len(date_list)
+        param_index = [None] * len(date_list)
+
+        # 客观指数 +5天开始计算 mean(x_5days) - x ||| total 970 days
+        for i, date in enumerate(date_list):
+            if i > 4:
+                param_index[i] = np.mean(df_hist['index'][i-5:i]) - df_hist['index'][i]
+            else:
+                param_index[i] = -9999999
+        df_hist['param_index'] = param_index
+        df_hist['rank'] = df_hist['param_index'].rank(ascending=False)
+        max_rank = max(df_hist['rank'])
+        df_hist['rank_param'] = [1-i/max_rank for i in df_hist['rank']]
+
         for i, date in enumerate(date_list):
             data = df_hist.iloc[i][1:9]
-            params = [0.00045, 4.5/0.5, 4.5/0.15, 500, 500, 0.041, 0.01, 6.1/0.5]
-            market_heat[i] = sum(data * params)
+            params = [0.00045, 4.5/0.5, 4.5/0.15, 5, 5, 0.041, 0.01, 6.1/0.5]
+
+            
+            market_heat[i] = sum(data * params) + df_hist['rank_param'][i]
         df_hist['market_heat'] = market_heat
-        #heat_median = 
+        
+        #df_hist = df_hist.iloc[5:,:]
+        
+        # qing xu pian cha
+        av2, av3, av5, av7, av10, av20 = [],[],[],[],[],[]
+        w_emo = [None] * len(date_list)
+        w1 = [None] * len(date_list)
+        w2 = [None] * len(date_list)
+        for i, date in enumerate(date_list):
+            daily_err = [-9999] *6
+            
+            if i >= 2:
+                av2.append(np.mean(df_hist['market_heat'][i-2:i]))
+                daily_err[0] = df_hist['market_heat'][i] - np.median(av2)
+
+            if i >= 3:
+                av3.append(np.mean(df_hist['market_heat'][i-3:i]))
+                daily_err[1] = df_hist['market_heat'][i] - np.median(av3)
+
+            if i >= 5:
+                av5.append((df_hist['market_heat'][i-5:i]))
+                daily_err[2] = df_hist['market_heat'][i] - np.median(av5)
+            
+            if i >= 7:
+                av7.append((df_hist['market_heat'][i-7:i]))
+                daily_err[3] = df_hist['market_heat'][i] - np.median(av7)
+
+            if i >= 10:
+                av10.append((df_hist['market_heat'][i-10:i]))
+                daily_err[4] = df_hist['market_heat'][i] - np.median(av10)
+
+            if i >= 20:
+                av20.append((df_hist['market_heat'][i-20:i]))
+                daily_err[5] = df_hist['market_heat'][i] - np.median(av20)
+            print(daily_err)
+
+            # weighted mean emo
+            w_emo_param = [0.08, 0.12, 0.3, 0.18, 0.2, 0.12]
+            w_emo[i] = sum([daily_err[j] * w_emo_param[j] for j in range(len(daily_err))])
+
+            w_short = [0.55,0.45]
+            w1[i] = daily_err[0] * w_short[0] + daily_err[1] * w_short[1]
+            w2[i] = daily_err[-1] * w_short[0] + daily_err[-2] * w_short[1]
+        
+        df_hist['weighted_emo'] = w_emo
+        df_hist['weighted_emo_R'] = df_hist['weighted_emo'].rank(ascending=False)
+        
+
+        df_hist['short'] = w1
+        df_hist['short_R'] =1 - df_hist['short'].rank(ascending=False)/300
+
+        df_hist['long'] = w2
+        df_hist['long_R'] = df_hist['long'].rank(ascending=False)
+
 
         return df_hist
 
@@ -260,7 +328,7 @@ class History_S():
             daily_param_2 = [None] * 10
             # 取当前日期前20个交易日
             index = np.where(self.opendate_df['cal_date'] == date)[0][0]
-            cal20 = self.opendate_df['cal_date'][index+19]
+            cal20 = self.opendate_df['cal_date'][index+20]
 
             # 拉取当天和20天前的交易数据
             today = pro.daily(trade_date=date)
@@ -358,11 +426,11 @@ if __name__ == '__main__':
     # 市场情绪计算
     pre20 = History_M(formatted_time, stock_code, token=token)
     # 存储
-    if os.path.exists('./qingxu.csv'):
-        df_M = pd.read_csv('./qingxu.csv').iloc[:,1:]
+    if os.path.exists('./longemo.csv'):
+        df_M = pd.read_csv('./longemo.csv').iloc[:,1:]
     else:
         df_M = pre20.get_hist(date_list, df_pre_M)
-        df_M.to_csv('qingxu.csv')
+        df_M.to_csv('longemo.csv')
     
     df_M = pre20.get_timeseries(df_M)
 
@@ -377,12 +445,12 @@ if __name__ == '__main__':
     # 容错率
     short = History_S(formatted_time, token=token)
     
-    if os.path.exists('./short.csv'):
-        df_short = pd.read_csv('./short.csv').iloc[:,1:]
+    if os.path.exists('./shortemo.csv'):
+        df_short = pd.read_csv('./shortemo.csv').iloc[:,1:]
         df_rongcuo = pd.read_csv('./rongcuo.csv').iloc[:,1:]
     else:
         df_rongcuo, df_short = short.get_hist(date_list, df_pre_M)
-        df_rongcuo.to_csv('rongcuo.csv')
+        df_rongcuo.to_csv('shortemo.csv')
         df_short.to_csv('short.csv')
 
 
