@@ -12,6 +12,7 @@ class History_M():
     def __init__(self, date, all_code, token):
         ts.set_token(token)
         self.pro = ts.pro_api()
+        self.code = all_code
 
         # 提取交易日历
         date_df = self.pro.trade_cal(exchange='SZSE', start_date='20200101', end_date=date)
@@ -21,27 +22,16 @@ class History_M():
         self.df_upratio = pd.DataFrame(None, columns=['date', 'amount', '上涨数', '涨幅>2%', '涨幅中位', '涨幅均值', '新高', '新低', '>MA20','index'])
     
     def pre_close(self, date_list):
-        df = pd.DataFrame(self.code)
-        for date in date_list:
-            print(date)
-            daily_m = pro.daily(trade_date=date)
-            df_today = daily_m[['ts_code','close']]
-            df_today.columns = ['ts_code', date]
-            df = pd.merge(df_today, df, on='ts_code')
-            df[date] = daily_m['close']
-        return df
-    
-    def get_100mm(self, date_list, ts_code):
         
-        start_date = date_list[-1]
+        #start_date = date_list[-1]
         end_date = date_list[0]
 
-        ts_code = self.pro.daily(trade_date='20240105')['amount'].sum() / 100000
+        ts_code = self.pro.daily(trade_date=end_date)['ts_code']
 
         df_close_all = pd.DataFrame()
         for tss in ts_code:
             print(tss)
-            df_meta = ts.pro_bar(ts_code=tss, adj='qfq', start_date='20200101', end_date=end_date)[['trade_date', 'close']]
+            df_meta = ts.pro_bar(ts_code=tss, adj='qfq', start_date='20180101', end_date=end_date)[['trade_date', 'close']]
             df_meta.columns = ['trade_date', tss]
             df_close_all['trade_date'] = df_meta['trade_date']
 
@@ -215,7 +205,7 @@ class History_M():
         
         df_hist['weighted_emo'] = w_emo
         df_hist['weighted_emo_R'] = df_hist['weighted_emo'].rank(ascending=False)
-        
+
 
         df_hist['short'] = w1
         df_hist['short_R'] =1 - df_hist['short'].rank(ascending=False)/300
@@ -379,7 +369,7 @@ class History_S():
 if __name__ == '__main__':
 
     # 获取今天的日期
-    time = pd.to_datetime('2024-01-02')
+    time = pd.to_datetime('2024-02-03')
     formatted_time = time.strftime("%Y%m%d")
 
     # token
@@ -401,7 +391,7 @@ if __name__ == '__main__':
     today_df = pro.limit_list_d(trade_date=formatted_time, limit_type='U', fields='ts_code,trade_date,industry,name,limit,pct_chg,open_times,limit_amount,fd_amount,first_time,last_time,up_stat,limit_times')
     # 检查是否为空 如果为空 把上个交易日设置为当日
     if today_df.empty:
-        formatted_time = opendate_df['pretrade_date'][0]
+        formatted_time = opendate_df['cal_date'].iloc[0]
         # 获取去年的第一个交易日
         last_year_date = datetime(int(formatted_time[:4]) - 1, 1, 1).date()
         formatted_date = last_year_date.strftime("%Y%m%d")
@@ -416,6 +406,8 @@ if __name__ == '__main__':
     stock_code = all_stock(token)
     
     # 收盘价-前数据提取
+    # 市场情绪计算
+    pre20 = History_M(formatted_time, stock_code, token=token)
     # 检查是否有文件
     if os.path.exists('./pre_close.csv'):
         df_pre_M = pd.read_csv('./pre_close.csv').iloc[:,1:]
@@ -423,8 +415,7 @@ if __name__ == '__main__':
         df_pre_M = pre20.pre_close(date_list=date_list)
         df_pre_M.to_csv('pre_close.csv')
     
-    # 市场情绪计算
-    pre20 = History_M(formatted_time, stock_code, token=token)
+    
     # 存储
     if os.path.exists('./longemo.csv'):
         df_M = pd.read_csv('./longemo.csv').iloc[:,1:]
