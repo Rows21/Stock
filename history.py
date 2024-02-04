@@ -29,11 +29,13 @@ class History_M():
         ts_code = self.pro.daily(trade_date=end_date)['ts_code']
 
         df_close_all = pd.DataFrame()
-        for tss in ts_code:
-            print(tss)
-            df_meta = ts.pro_bar(ts_code=tss, adj='qfq', start_date='20180101', end_date=end_date)[['trade_date', 'close']]
+        df_close_all['trade_date'] = date_list
+        for tss in tqdm(ts_code):
+            #print(tss)
+            df_meta = ts.pro_bar(ts_code=tss, adj='qfq', start_date=date_list[-1], end_date=date_list[0])[['trade_date', 'close']]
             df_meta.columns = ['trade_date', tss]
-            df_close_all['trade_date'] = df_meta['trade_date']
+
+            #df_close_all['trade_date'] = df_meta['trade_date']
 
             df_close_all = pd.merge(df_close_all, df_meta, on='trade_date', how='outer')
 
@@ -90,13 +92,13 @@ class History_M():
     def get_hist(self, date_list, df_pre):
 
         date_list.reverse()
-        for i,date in enumerate(date_list):
+        for i,date in tqdm(enumerate(date_list)):
 
             daily_m = pro.daily(trade_date=date)
             # 删除BJ字样
             daily_m = daily_m[~daily_m['ts_code'].str.contains('BJ')]
             daily_param = [None] * 8
-            print(date)
+            #print(date)
 
             # 成交额()
             amount = daily_m['amount'].sum() / 100000
@@ -208,13 +210,22 @@ class History_M():
 
 
         df_hist['short'] = w1
-        df_hist['short_R'] =1 - df_hist['short'].rank(ascending=False)/300
+        df_hist['short_R'] = 1 - df_hist['short'].rank(ascending=False)/df_hist['short']
 
         df_hist['long'] = w2
-        df_hist['long_R'] = df_hist['long'].rank(ascending=False)
+        df_hist['long_R'] = 1 - df_hist['long'].rank(ascending=False)/df_hist['long']
+
+    
+        # 定义分位点列表
+        quantiles = [0, 0.1, 0.42, 0.58, 0.9, 1]
+
+        # 使用 cut() 方法根据分位点划分数据，并生成新的一列 'B'
+        df_hist['position'] = pd.cut(df_hist['weighted_emo'], bins=df_hist['weighted_emo'].quantile(quantiles), labels=['<10%', '10-42%', '42-58%', '58-90%', '>90%'])
+
+        df_hist.iloc[20:,:].to_csv('long_final.csv')
 
 
-        return df_hist
+        return df_hist.iloc[20:,:]
 
 
 class History_L(limit_times):
@@ -380,7 +391,7 @@ if __name__ == '__main__':
     # 检查数据
     # 获取去年的1月1日日期并格式化
     # last_year_date = datetime(time.year - 1, 1, 1).date()
-    last_year_date = pd.to_datetime('2023-12-01')
+    last_year_date = pd.to_datetime('2018-01-01')
     formatted_date = last_year_date.strftime("%Y%m%d")
     
     # 提取交易日历
@@ -393,8 +404,8 @@ if __name__ == '__main__':
     if today_df.empty:
         formatted_time = opendate_df['cal_date'].iloc[0]
         # 获取去年的第一个交易日
-        last_year_date = datetime(int(formatted_time[:4]) - 1, 1, 1).date()
-        formatted_date = last_year_date.strftime("%Y%m%d")
+        #last_year_date = datetime(int(formatted_time[:4]) - 1, 1, 1).date()
+        #formatted_date = last_year_date.strftime("%Y%m%d")
         
         # 提取交易日历
         date_df = pro.trade_cal(exchange='SZSE', start_date=formatted_date, end_date=formatted_time)
