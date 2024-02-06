@@ -156,7 +156,7 @@ class History_M():
 
         for i, date in enumerate(date_list):
             data = df_hist.iloc[i][1:9]
-            params = [0.00045, 4.5/0.5, 4.5/0.15, 5, 5, 0.041, 0.01, 6.1/0.5]
+            params = [0.00045, 4.5/0.5, 4.5/0.15, 5, 5, 0.041, -0.01, 6.1/0.5]
 
             
             market_heat[i] = sum(data * params) + df_hist['rank_param'][i]
@@ -171,31 +171,30 @@ class History_M():
         w2 = [None] * len(date_list)
         for i, date in enumerate(date_list):
             daily_err = [-9999] *6
-            
+
             if i >= 2:
-                av2.append(np.mean(df_hist['market_heat'][i-2:i]))
-                daily_err[0] = df_hist['market_heat'][i] - np.median(np.mean(df_hist['market_heat'][i-2:i]))
+                av2.append(np.mean(df_hist['market_heat'][i - 2:i]))
+                daily_err[0] = np.mean(df_hist['market_heat'][i - 2:i]) - np.median(av2)
 
             if i >= 3:
-                av3.append(np.mean(df_hist['market_heat'][i-3:i]))
-                daily_err[1] = df_hist['market_heat'][i] - np.median(np.mean(df_hist['market_heat'][i-3:i]))
+                av3.append(np.mean(df_hist['market_heat'][i - 3:i]))
+                daily_err[1] = np.mean(df_hist['market_heat'][i - 3:i]) - np.median(av3)
 
             if i >= 5:
-                av5.append((df_hist['market_heat'][i-5:i]))
-                daily_err[2] = df_hist['market_heat'][i] - np.median(np.mean(df_hist['market_heat'][i-5:i]))
-            
+                av5.append(np.mean(df_hist['market_heat'][i - 5:i]))
+                daily_err[2] = np.mean(df_hist['market_heat'][i - 5:i]) - np.median(av5)
+
             if i >= 7:
-                av7.append((df_hist['market_heat'][i-7:i]))
-                daily_err[3] = df_hist['market_heat'][i] - np.median(np.mean(df_hist['market_heat'][i-7:i]))
+                av7.append(np.mean(df_hist['market_heat'][i - 7:i]))
+                daily_err[3] = np.mean(df_hist['market_heat'][i - 7:i]) - np.median(av7)
 
             if i >= 10:
-                av10.append((df_hist['market_heat'][i-10:i]))
-                daily_err[4] = df_hist['market_heat'][i] - np.median(np.mean(df_hist['market_heat'][i-10:i]))
+                av10.append(np.mean(df_hist['market_heat'][i - 10:i]))
+                daily_err[4] = np.mean(df_hist['market_heat'][i - 10:i]) - np.median(av10)
 
             if i >= 20:
-                av20.append((df_hist['market_heat'][i-20:i]))
-                daily_err[5] = df_hist['market_heat'][i] - np.median(np.mean(df_hist['market_heat'][i-20:i]))
-            print(daily_err)
+                av20.append(np.mean(df_hist['market_heat'][i - 20:i]))
+                daily_err[5] = np.mean(df_hist['market_heat'][i - 20:i]) - np.median(av20)
             df_daily_err.loc[i] = daily_err
 
 

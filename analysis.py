@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
 import tushare as ts
+from tqdm import tqdm
 
 def algo2():
     return out1, out2
@@ -16,71 +17,44 @@ def all_stock(token):
     return all
 
 class daily_in():
-    def __init__(self, date, all_code, token) -> None:
+    def __init__(self, date, token) -> None:
         self.date_str = date
-        self.code = all_code
         ts.set_token(token)
-        pro = ts.pro_api()
+        self.pro = ts.pro_api()
+        cal = pro.trade_cal(exchange='SZSE', start_date=(pd.to_datetime(date) - timedelta(days=20)).strftime("%Y%m%d"), end_date=date)
+        self.daily = self.pro.daily(trade_date=self.date_str)
+        self.trade_cal = cal[cal['is_open'] == 1]['pretrade_date'].unique()[:10]
 
-        self.amount_df = pro.daily_info(trade_date=self.date_str, exchange='SZ,SH', fields='trade_date,ts_name,ts_code,com_count,amount')
-        self.up_df = pro.limit_list_d(trade_date=self.date_str, limit_type='U', fields='ts_code,trade_date,industry,name,limit,pct_chg,open_times,limit_amount,fd_amount,first_time,last_time,up_stat,limit_times')
+    def pre_close(self, path='./pre_close.csv'):
         
-        daily_m = pro.daily(trade_date=self.date_str)
-        self.all_m = pd.merge(all_code,daily_m,on='ts_code')
+        ts_today = self.daily['ts_code']
+        df_close = pd.read_csv(path).iloc[:,1:]
+        ts_hist = df_close.columns
+        adj = pro.query('adj_factor',  trade_date=self.date_str)
+        adj_pre = pro.query('adj_factor',  trade_date=self.trade_cal[0])
+        feature = pd.merge(adj, adj_pre, on='ts_code', how='outer')
+        filtered_feature = feature[feature['adj_factor_x'] - feature['adj_factor_y'] != 0]
+
+        # 不变的前复权价
+        elements_to_exclude = filtered_feature['ts_code'].to_list()
+        today = [self.date_str] + self.daily[~self.daily['ts_code'].isin(elements_to_exclude)]['close'].to_list()
+        new = self.daily[self.daily['ts_code'].isin(elements_to_exclude)][['ts_code', 'close']]
+        #complement = set(ts_today) - set(ts_hist)
+        #if complement != 0:
+
+        df_close.loc[len(df_close)] = new
+
+        for tss in tqdm(elements_to_exclude):
+            #print(tss)
+            df_meta = ts.pro_bar(ts_code=tss, adj='qfq', start_date=df_close['trade_date'][0], end_date=self.date_str)[['trade_date', 'close']]
+            df_meta.columns = ['trade_date', tss]
+
+            #df_close_all['trade_date'] = df_meta['trade_date']
+
+            df_close_all = pd.merge(df_close_all, df_meta, on='trade_date', how='outer')
+
     
-    def get_param1(self):
-        return len(self.up_df)
-    
-    def get_param3(self):
-        return len(self.up_df)
 
-    def get_param56(self):
-        param5 = np.median(self.up_df['pct_chg'])
-        param6 = np.mean(self.up_df['pct_chg'])
-        return param5, param6
-    
-    def get_param78(self):
-
-        # 前百日最高最低值
-        max100 = 100
-        min100 = 0
-
-        # 判断
-        count_max = (self.all_m['close'] > self.all_m['pre_close']).sum()
-        count_min = (self.all_m['close'] > self.all_m['pre_close']).sum()
-        return count_max, count_min
-    
-    def get_param9(self):
-        
-        # 前20日收盘均价
-        past20_ma = pd.DataFrame({'Column': [10] * 5096})
-
-        # 判断
-        count = (self.all_m['close'] > self.all_m['pre_close']).sum()
-
-        return count
-    
-    def get_param10(self):
-        return 1000
-    
-    def get_input1(self):
-        in4 = self.amount_df['amount'][0] + self.amount_df['amount'][11]
-        in5 = self.amount_df['com_count'][0] + self.amount_df['com_count'][11]
-        return in4, in5
-
-    def algo1(self):
-        
-        param1 = self.get_param1()
-        param3 = self.get_param3()
-        in4, in5 = self.get_input1()
-        param5, param6 = self.get_param56()
-        param7, param8 = self.get_param78()
-        param9 = self.get_param9()
-        param10 = self.get_param10()
-        out1 = 0.00045 * in4 + 4.5 * param1 / (in5 * 0.5) + 4.5 * param3 / (in5 * 0.5) + 500 * (param5 + param6) + 0.041 * param7 + 0.01 * param8 + 6.1*param9/(in5*0.5) + param10
-        out2 = np.median(out1)
-
-        return out1, out2
     
 class day20_in():
     def __init__(self, date, token):
@@ -175,17 +149,19 @@ class limit_times():
 
         
 if __name__ == '__main__':
-    time = pd.to_datetime('2023-12-28')
+    # 获取今天的日期
+    time = pd.to_datetime('2024-02-02')
     time = time.strftime('%Y%m%d') 
-    token = 'abfd1859c8f279c5d5b90fd2966fd286845ad6106efac0bc10fbbf72'
+    token = 'c336245e66e2882632285493a7d0ebc23a2fbb7392b74e4b3855a222'
 
     ts.set_token(token)
     pro = ts.pro_api()
     stock_code = all_stock(token)
 
     # 前数据提取
-    pre20 = day20_in(time, token)
-    df_pre20 = pre20.pre_close20(stock_code)
+    pre20 = daily_in(time, token)
+    df_pre20 = pre20.pre_close()
+    # 更新收盘价
 
     # 导入储存数据
     df = pd.read_csv('api.csv').iloc[:,1:]
