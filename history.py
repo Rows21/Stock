@@ -104,14 +104,14 @@ class History_M():
             amount = daily_m['amount'].sum() / 100000
 
             # 上涨数
-            daily_m= daily_m['close']/daily_m['pre_close'] -1
-            daily_param[0] = len(daily_m[daily_m> 0]) / len(daily_m) # /总股票数
+            #daily_m['difference'] = daily_m['close']/daily_m['pre_close'] -1
+            daily_param[0] = len(daily_m[daily_m['pct_chg'] > 0]) / len(daily_m) # /总股票数
 
             # 涨幅 > 2%
-            daily_param[1] = len(daily_m[daily_m> 0.02]) / len(daily_m) # /总股票数
+            daily_param[1] = len(daily_m[daily_m['pct_chg']> 0.02]) / len(daily_m) # /总股票数
 
-            daily_param[2] = np.median(daily_m['difference']) * 100 # 中位
-            daily_param[3] = np.mean(daily_m['difference']) * 100 # 均值
+            daily_param[2] = np.median(daily_m['pct_chg']) # 中位
+            daily_param[3] = np.mean(daily_m['pct_chg']) # 均值
 
             # 读入获取的百日新高新低值
             index = np.where(df_pre['trade_date'] == int(date))[0][0]
@@ -236,7 +236,8 @@ class History_L():
         self.df_limit = pd.DataFrame(None, columns = ['date', '成交量', 1,2,3,4,5,6,7,'7+', '涨停数', '跌停数', '炸板率', '连板高度', '连板股数', '连板溢价'])
 
     def get_hist(self, date_list, pre_close):
-        date_list.reverse()
+        if int(date_list[0]) > int(date_list[1]):
+            date_list.reverse()
         date_list = date_list[date_list.index('20200102'):] # start from 2020
 
         # Save stock code
@@ -312,9 +313,9 @@ class History_L():
     
     def get_timeseries(self, df_hist):
         date_list = df_hist['date'].to_list()
-        l_emo = [None] * len(date_list)
-        l_bar = [None] * len(date_list)
-        h_bar = [None] * len(date_list)
+        l_emo = [0] * len(date_list)
+        l_bar = [0] * len(date_list)
+        h_bar = [0] * len(date_list)
         for i, date in enumerate(date_list):
             data = df_hist.iloc[i]
             param0 = sum(0.8 * data[2:10]) + 0.5 * data['连板高度']
@@ -480,20 +481,20 @@ class History_S():
             # > 7%
             daily_param_2[9] = len(up_df[up_df <= -0.07])
 
-            amt_rank = lianban.loc[0:i,]['成交量'].rank(ascending=False)
-            amt_param = 1-amt_rank[i]/(i+1)
-            up_rank = lianban.loc[0:i,]['涨停数'].rank(ascending=False)
-            up_param = 1-up_rank[i]/(i+1)
-            down_rank = lianban.loc[0:i,]['跌停数'].rank(ascending=False)
-            down_param = down_rank[i]/(i+1)
-            zha_rank = lianban.loc[0:i,]['炸板率'].rank(ascending=False)
-            zha_param = zha_rank[i]/(i+1)
-            stockh_rank = lianban.loc[0:i,]['连板高度'].rank(ascending=False)
-            stockh_param = 1-stockh_rank[i]/(i+1)
-            stockno_rank = lianban.loc[0:i,]['连板股数'].rank(ascending=False)
-            stockno_param = 1-stockno_rank[i]/(i+1)
-            stockout_rank = lianban.loc[0:i,]['连板溢价'].rank(ascending=False)
-            stockout_param = 1-stockout_rank[i]/(i+1)
+            amt_rank = lianban.iloc[0:(i+1),]['成交量'].rank(ascending=False)
+            amt_param = 1-amt_rank[i+20]/(i+1)
+            up_rank = lianban.iloc[0:(i+1),]['涨停数'].rank(ascending=False)
+            up_param = 1-up_rank[i+20]/(i+1)
+            down_rank = lianban.iloc[0:(i+1),]['跌停数'].rank(ascending=False)
+            down_param = down_rank[i+20]/(i+1)
+            zha_rank = lianban.iloc[0:(i+1),]['炸板率'].rank(ascending=False)
+            zha_param = zha_rank[i+20]/(i+1)
+            stockh_rank = lianban.iloc[0:(i+1),]['连板高度'].rank(ascending=False)
+            stockh_param = 1-stockh_rank[i+20]/(i+1)
+            stockno_rank = lianban.iloc[0:(i+1),]['连板股数'].rank(ascending=False)
+            stockno_param = 1-stockno_rank[i+20]/(i+1)
+            stockout_rank = lianban.iloc[0:(i+1),]['连板溢价'].rank(ascending=False)
+            stockout_param = 1-stockout_rank[i+20]/(i+1)
             
             param_lianban = 0.7*amt_param + 1*up_param+ 1.1*down_param+ 0.7*zha_param+ 1.1*stockno_param+ 1*stockout_param+ 1.2*stockh_param
             daily_param_2[-2] = param_lianban + 2*self.df_upratio['w_sump'][i] + 0.88*sum(daily_param_2[:8])
@@ -579,7 +580,7 @@ class History_S():
 if __name__ == '__main__':
 
     # 获取今天的日期
-    time = pd.to_datetime('2024-02-03')
+    time = pd.to_datetime('2024-02-01')
     formatted_time = time.strftime("%Y%m%d")
 
     # token
@@ -622,8 +623,8 @@ if __name__ == '__main__':
     if os.path.exists('./pre_close.csv'):
         df_pre_M = pd.read_csv('./pre_close.csv').iloc[:,1:]
     else:
-        df_pre_M = pre20.pre_close(date_list=date_list)
-        df_pre_M.to_csv('pre_close.csv')
+        pre20.pre_close(date_list=date_list)
+        #df_pre_M.to_csv('pre_close.csv')
     
     # 存储
     if os.path.exists('./longemo.csv'):
@@ -632,7 +633,7 @@ if __name__ == '__main__':
         df_M = pre20.get_hist(date_list, df_pre_M)
         df_M.to_csv('longemo.csv')
     
-    #df_M = pre20.get_timeseries(df_M)
+    df_M = pre20.get_timeseries(df_M)
 
     # 连板计算
     lianban = History_L(formatted_time, token=token)

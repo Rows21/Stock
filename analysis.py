@@ -35,48 +35,58 @@ class daily_in():
         
 
     def pre_close(self, path='./pre_close.csv'):
-        
-        ts_today = self.daily['ts_code']
         df_close = pd.read_csv(path).iloc[:,1:]
-        ts_hist = df_close.columns
-        adj = pro.query('adj_factor',  trade_date=self.date_str)
-        adj_pre = pro.query('adj_factor',  trade_date=self.trade_cal[0])
-        feature = pd.merge(adj, adj_pre, on='ts_code', how='outer')
-        feature = feature[~feature['ts_code'].str.contains('BJ')]
-        filtered_feature = feature[feature['adj_factor_x'] - feature['adj_factor_y'] != 0]
+        df_close = df_close.loc[:, ~df_close.columns.str.contains('BJ')]
+        if float(self.date_str) in df_close['trade_date'].tolist():
+            self.df_pre = df_close
+        else:
+            # 在第一行插入新行
+            ts_today = self.daily['ts_code']
+            new_row = pd.Series([np.nan] * len(df_close.columns), index=df_close.columns)
+            df_close = pd.concat([pd.DataFrame([new_row]), df_close]).reset_index(drop=True)
+            df_close['trade_date'][0] = int(self.date_str)
+            ts_hist = df_close.columns
 
-        # 不变的前复权价
-        # new
-        elements_to_exclude = filtered_feature['ts_code'].to_list()
-        for tsnew in elements_to_exclude:
-            df_close[tsnew] = 0
+            adj = pro.query('adj_factor',  trade_date=self.date_str)
+            adj_pre = pro.query('adj_factor',  trade_date=self.trade_cal[0])
+            feature = pd.merge(adj, adj_pre, on='ts_code', how='outer')
+            feature = feature[~feature['ts_code'].str.contains('BJ')]
+            filtered_feature = feature[feature['adj_factor_x'] - feature['adj_factor_y'] != 0]
+            
+            print('执行复权值更新:')
+            if filtered_feature.empty != True:
+                print(filtered_feature['ts_code'].tolist())
+                for tss in filtered_feature['ts_code'].tolist():
+                    if tss in df_close.columns:
+                        adj_pre = filtered_feature[filtered_feature['ts_code'] == tss]['trade_date_y']
+                        adj_aft = filtered_feature[filtered_feature['ts_code'] == tss]['trade_date_x']
+                        df_close[tss] = df_close[tss] * adj_pre / adj_aft
+                    else:
+                        df_close[tss] = pd.Series([np.nan] * len(df_close))
 
-        df_temp = pd.DataFrame([[self.date_str] + [0.0] * (df_close.shape[1]-1)])
-        df_temp.columns = df_close.columns
-        df_close = pd.concat([df_temp,df_close]).reset_index(drop=True)
+            # 不变的前复权价
+            # new
+            #elements_to_exclude = filtered_feature['ts_code'].to_list()
+            print('执行前复权更新:')
+            for tsnew in tqdm(ts_today):
+                if tsnew not in df_close.columns:
+                    df_new:pd.DataFrame = ts.pro_bar(ts_code=tsnew, adj='qfq', start_date='20171229', end_date=self.date_str)[['trade_date', 'close']]
+                    df_new.columns = ['trade_date', tsnew]
+                    df_new['trade_date'] = df_new['trade_date'].astype(float)
+                    df_close = pd.merge(df_close, df_new, on='trade_date', how='outer')
+                else:
+                    df_close[tsnew][0] = float(self.daily[self.daily['ts_code'] == tsnew]['close'].values)
+            
+            df_close.to_csv('pre_close.csv')
+            self.df_pre = df_close
 
-        for tss in tqdm(df_close.columns[1:]):
-            #if tss in elements_to_exclude:
-                #print(tss)
-                #df_meta = ts.pro_bar(ts_code=tss, adj='qfq', start_date=df_close['trade_date'][0], end_date=self.date_str)[['trade_date', 'close']]
-                #df_meta.columns = ['trade_date', tss]
-            #else:
-            try:
-                df_close[tss][0] = self.daily[self.daily['ts_code'] == tss]['close']
-            except:
-                df_close[tss][0] = df_close[tss][1]
-        
-        df_close.to_csv('pre_close.csv')
-        self.df_pre = df_close
-            #df_close_all['trade_date'] = df_meta['trade_date']
         
     def get_today(self):
         if self.pas_param == False:
             return self.df_upratio
+        
         self.pre_close()
-        self.daily = pro.daily(trade_date=self.date_str)
-        # 删除BJ字样
-        self.daily = self.daily[~self.daily['ts_code'].str.contains('BJ')]
+        print('执行长线表更新:')
         daily_param = [None] * 8
         #print(date)
 
@@ -94,14 +104,14 @@ class daily_in():
         daily_param[3] = np.mean(self.daily['difference']) * 100 # 均值
 
         # 读入获取的百日新高新低值
-        index = np.where(self.df_pre['trade_date'] == self.date_str)[0][0]
+        index = np.where(self.df_pre['trade_date'] == int(self.date_str))[0][0]
         df_100 = self.df_pre.iloc[index:(index+100),1:]
         daily_param[4] = (df_100.iloc[0] == df_100.max()).sum() # 新高
         daily_param[5] = (df_100.iloc[0] == df_100.min()).sum() # 新低
 
         # >MA20
         df_20 = self.df_pre.iloc[index:(index+20),:]
-        daily_param[6] = (df_20.iloc[0][1:] >= df_20.mean()).sum() / len(self.daily) # /总股票数
+        daily_param[6] = (df_20.iloc[0][1:] >= df_20.mean()[1:]).sum() / len(self.daily) # /总股票数
 
         # 客观指数
         daily_param[7] = self.df_upratio.iloc[-1]['index'] * (1 + 0.5*(self.df_upratio.iloc[-1]['涨幅中位'] + self.df_upratio.iloc[-1]['涨幅均值'])/100)
@@ -134,8 +144,6 @@ class limit_times():
     def get_today(self):
         if self.pas_param == False:
             return self.df_limit
-        
-        print(self.date_str)
         daily_param = [None] * 15
 
         # 拉取当天交易数据
@@ -219,8 +227,8 @@ class short_in():
         if self.pas_param == False:
             return self.df_upratio, self.short
         print(self.date_str)
-        daily_param_1 = [None] * 11
-        daily_param_2 = [None] * 12
+        daily_param_1 = [0] * 11
+        daily_param_2 = [0] * 12
         # 取当前日期前20个交易日
         date_20 = self.trade_cal
 
@@ -263,8 +271,8 @@ class short_in():
             rankj = 1- self.df_upratio.iloc[:,2+j].rank(ascending=False)[i]/(i+1)
             sump = sump + rankj
 
-        self.df_upratio['sump'][i] = sump
-        self.df_upratio['w_sump'][i] = 1 - self.df_upratio.iloc[:,-2].rank(ascending=False)[i]/(i+1)
+        self.df_upratio.iloc[i,-2] = sump
+        self.df_upratio.iloc[i,-1] = 1 - self.df_upratio.iloc[:,-2].rank(ascending=False)[i]/(i+1)
 
         # 筛选涨跌幅
         # 龙1-8
@@ -308,7 +316,7 @@ if __name__ == '__main__':
 
     # 提取日期部分的天数
     time_c = current_time.date()
-    #time = pd.to_datetime('2024-02-09')
+    #time_c = pd.to_datetime('2024-03-01')
 
     time_c = time_c.strftime('%Y%m%d') 
     token = 'c336245e66e2882632285493a7d0ebc23a2fbb7392b74e4b3855a222'
@@ -332,34 +340,37 @@ if __name__ == '__main__':
         df_L.to_csv('longemo.csv')
         df_L.to_csv('.\\logs\\' + time + 'longemo.csv')
         
-        from history import History_M
-        histm = History_M(time, stock_code, token=token)
-        df_M_now = histm.get_timeseries(df_L)
-
+        
         # 更新连板数据
         lb = limit_times(time, token)
         df_LB = lb.get_today()
         df_LB.to_csv('lianban.csv')
         df_LB.to_csv('.\\logs\\' + time + 'lianban.csv')
 
-        from history import History_L
-        histl = History_L(time, token=token)
-        df_LB_now = histl.get_timeseries(df_LB)
 
         # short
         df_close = pd.read_csv('./pre_close.csv').iloc[:,1:]
         lianban = pd.read_csv('./lianban.csv').iloc[:,1:]
         short = short_in(time, token)
         df_R, df_S = short.get_today(df_close, lianban)
-        df_R.to_csv('rongcuo.csv')
-        df_R.to_csv('.\\logs\\' + time + 'rongcuo.csv')
+        df_R.to_csv('shortemo.csv')
+        df_R.to_csv('.\\logs\\' + time + 'shortemo.csv')
         df_S.to_csv('short.csv')
         df_S.to_csv('.\\logs\\' + time + 'short.csv')
+        
+    
+    from history import History_M
+    histm = History_M(time, stock_code, token=token)
+    df_M_now = histm.get_timeseries(df_L)  
 
-        from history import History_S
-        hists = History_S(time, token=token)
-        df_S_now = hists.get_timeseries(df_S)
+    from history import History_L
+    histl = History_L(time, token=token)
+    df_LB_now = histl.get_timeseries(df_LB)
 
-    df_M_now.to_csv(time + 'long_final.csv')
-    df_LB_now.to_csv(time + 'lianban_final.csv')
-    df_S_now.to_csv(time + 'short_final.csv')
+    from history import History_S
+    hists = History_S(time, token=token)
+    df_S_now = hists.get_timeseries(df_S) 
+
+    df_M_now.to_csv('今日长线.csv')
+    df_LB_now.to_csv('今日连板.csv')
+    df_S_now.to_csv('今日短线.csv')
