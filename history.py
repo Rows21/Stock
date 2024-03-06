@@ -32,7 +32,7 @@ class History_M():
         df_close_all['trade_date'] = date_list
         for tss in tqdm(ts_code):
             #print(tss)
-            df_meta = ts.pro_bar(ts_code=tss, adj='qfq', start_date=date_list[-1], end_date=date_list[0])[['trade_date', 'close']]
+            df_meta = ts.pro_bar(ts_code=tss, adj='qfq', start_date='20170101', end_date=date_list[0])[['trade_date', 'close']]
             df_meta.columns = ['trade_date', tss]
 
             #df_close_all['trade_date'] = df_meta['trade_date']
@@ -420,7 +420,7 @@ class History_S():
         self.df_upratio = pd.DataFrame(None, columns = ['date', '>100', '80-100', '60-80', '50-60', '40-50', '30-40', '20-30','all','bar','sump','w_sump'])
         self.short = pd.DataFrame(None, columns = ['date', '1', '2', '3', '4', '5', '6', '7', '8', '>9', '>7','semo','bar'])
 
-    def get_hist(self, date_list, df_close, lianban):
+    def get_hist(self, date_list, df_close, lianban, df_close_c):
         date_list.reverse()
         date_list = date_list[date_list.index('20200102'):] # start from 2020
 
@@ -433,11 +433,20 @@ class History_S():
             date_20 = date_list[i]
 
             # 拉取当天和20天前的交易数据
-            today = df_close[df_close['trade_date'] == int(date)]
-            pre = df_close[df_close['trade_date'] == int(date_20)]
-            tempdf = pd.concat([today,pre], ignore_index=True).dropna(axis=1)
-            tempdf = tempdf.iloc[:,1:]
-            up_df = (tempdf.iloc[0]/tempdf.iloc[1] -1).dropna()
+            ind_today = int(df_close[df_close['trade_date'] == int(date)].index.values)
+            ind_pre = int(df_close[df_close['trade_date'] == int(date_20)].index.values)
+            df_20 = df_close.iloc[ind_today:(ind_pre+1),]
+            #for column in df_20.columns:
+            #    if pd.isnull(df_20[column].iloc[0]):
+            #        df_20 = df_20.drop(column, axis=1)
+            
+            today = df_20[df_20['trade_date'] == int(date)]
+            pre = df_close_c[df_close_c['trade_date'] == int(date_20)]
+
+            tempdf = pd.concat([today,pre])
+            tempdf = tempdf.iloc[:,1:].dropna(axis=1)
+            up_df = (tempdf.iloc[0]/tempdf.iloc[1] -1).replace({np.inf: np.nan, -np.inf: np.nan})
+            up_df = up_df.dropna()
 
             # >100
             daily_param_1[0] = len(up_df[up_df >= 1.0])
@@ -482,19 +491,19 @@ class History_S():
             daily_param_2[9] = len(up_df[up_df <= -0.07])
 
             amt_rank = lianban.iloc[0:(i+1),]['成交量'].rank(ascending=False)
-            amt_param = 1-amt_rank[i+20]/(i+1)
+            amt_param = 1-amt_rank[i]/(i+1)
             up_rank = lianban.iloc[0:(i+1),]['涨停数'].rank(ascending=False)
-            up_param = 1-up_rank[i+20]/(i+1)
+            up_param = 1-up_rank[i]/(i+1)
             down_rank = lianban.iloc[0:(i+1),]['跌停数'].rank(ascending=False)
-            down_param = down_rank[i+20]/(i+1)
+            down_param = down_rank[i]/(i+1)
             zha_rank = lianban.iloc[0:(i+1),]['炸板率'].rank(ascending=False)
-            zha_param = zha_rank[i+20]/(i+1)
+            zha_param = zha_rank[i]/(i+1)
             stockh_rank = lianban.iloc[0:(i+1),]['连板高度'].rank(ascending=False)
-            stockh_param = 1-stockh_rank[i+20]/(i+1)
+            stockh_param = 1-stockh_rank[i]/(i+1)
             stockno_rank = lianban.iloc[0:(i+1),]['连板股数'].rank(ascending=False)
-            stockno_param = 1-stockno_rank[i+20]/(i+1)
+            stockno_param = 1-stockno_rank[i]/(i+1)
             stockout_rank = lianban.iloc[0:(i+1),]['连板溢价'].rank(ascending=False)
-            stockout_param = 1-stockout_rank[i+20]/(i+1)
+            stockout_param = 1-stockout_rank[i]/(i+1)
             
             param_lianban = 0.7*amt_param + 1*up_param+ 1.1*down_param+ 0.7*zha_param+ 1.1*stockno_param+ 1*stockout_param+ 1.2*stockh_param
             daily_param_2[-2] = param_lianban + 2*self.df_upratio['w_sump'][i] + 0.88*sum(daily_param_2[:8])
@@ -565,7 +574,6 @@ class History_S():
         df_hist['long'] = w2
         df_hist['long_R'] = 1 - df_hist['long'].rank(ascending=False)/df_hist['long']
 
-    
         # 定义分位点列表
         quantiles = [0, 0.1, 0.42, 0.58, 0.9, 1]
 
@@ -580,7 +588,7 @@ class History_S():
 if __name__ == '__main__':
 
     # 获取今天的日期
-    time = pd.to_datetime('2024-02-01')
+    time = pd.to_datetime('2024-03-04')
     formatted_time = time.strftime("%Y%m%d")
 
     # token
@@ -633,7 +641,7 @@ if __name__ == '__main__':
         df_M = pre20.get_hist(date_list, df_pre_M)
         df_M.to_csv('longemo.csv')
     
-    df_M = pre20.get_timeseries(df_M)
+    #df_M = pre20.get_timeseries(df_M)
 
     # 连板计算
     lianban = History_L(formatted_time, token=token)
@@ -643,7 +651,7 @@ if __name__ == '__main__':
         df_lianban = lianban.get_hist(date_list, df_pre_M)
         df_lianban.to_csv('lianban.csv')
     
-    df_lianban = lianban.get_timeseries(df_lianban)
+    #df_lianban = lianban.get_timeseries(df_lianban)
 
     # 容错率
     short = History_S(formatted_time, token=token)
@@ -652,7 +660,8 @@ if __name__ == '__main__':
         df_rongcuo = pd.read_csv('./shortemo.csv').iloc[:,1:]
         df_short = pd.read_csv('./short.csv').iloc[:,1:]
     else:
-        df_rongcuo, df_short = short.get_hist(date_list, df_pre_M, df_lianban)
+        df_pre_C = pd.read_csv('./pre_close_adj.csv').iloc[:,1:]
+        df_rongcuo, df_short = short.get_hist(date_list, df_pre_M, df_lianban, df_pre_C)
         df_rongcuo.to_csv('shortemo.csv')
         df_short.to_csv('short.csv')
     
