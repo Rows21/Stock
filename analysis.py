@@ -32,10 +32,10 @@ class daily_in():
         self.daily = daily[~daily['ts_code'].str.contains('BJ')]
         self.trade_cal = cal[cal['is_open'] == 1]['pretrade_date'].unique()[:10]
         
-        
-
-    def pre_close(self, path='./pre_close.csv'):
+    def pre_close(self, path='./pre_close.csv', path_adj = './pre_close_adj.csv'):
         df_close = pd.read_csv(path).iloc[:,1:]
+        df_close_adj = pd.read_csv(path_adj).iloc[:,1:]
+
         df_close = df_close.loc[:, ~df_close.columns.str.contains('BJ')]
         if float(self.date_str) in df_close['trade_date'].tolist():
             self.df_pre = df_close
@@ -43,9 +43,11 @@ class daily_in():
             # 在第一行插入新行
             ts_today = self.daily['ts_code']
             new_row = pd.Series([np.nan] * len(df_close.columns), index=df_close.columns)
+
             df_close = pd.concat([pd.DataFrame([new_row]), df_close]).reset_index(drop=True)
             df_close['trade_date'][0] = int(self.date_str)
-            ts_hist = df_close.columns
+            df_close_adj = pd.concat([pd.DataFrame([new_row]), df_close_adj]).reset_index(drop=True)
+            df_close_adj['trade_date'][0] = int(self.date_str)
 
             adj = pro.query('adj_factor',  trade_date=self.date_str)
             adj_pre = pro.query('adj_factor',  trade_date=self.trade_cal[0])
@@ -61,8 +63,10 @@ class daily_in():
                         adj_pre = filtered_feature[filtered_feature['ts_code'] == tss]['trade_date_y']
                         adj_aft = filtered_feature[filtered_feature['ts_code'] == tss]['trade_date_x']
                         df_close[tss] = df_close[tss] * adj_pre / adj_aft
+                        df_close_adj[tss] = df_close[tss] * adj_pre / adj_aft
                     else:
                         df_close[tss] = pd.Series([np.nan] * len(df_close))
+                        df_close_adj[tss] = pd.Series([np.nan] * len(df_close_adj))
 
             # 不变的前复权价
             # new
@@ -73,10 +77,19 @@ class daily_in():
                     df_new:pd.DataFrame = ts.pro_bar(ts_code=tsnew, adj='qfq', start_date='20171229', end_date=self.date_str)[['trade_date', 'close']]
                     df_new.columns = ['trade_date', tsnew]
                     df_new['trade_date'] = df_new['trade_date'].astype(float)
+
                     df_close = pd.merge(df_close, df_new, on='trade_date', how='outer')
                 else:
                     df_close[tsnew][0] = float(self.daily[self.daily['ts_code'] == tsnew]['close'].values)
+
+            df_close_adj.iloc[0] = df_close.iloc[0]
+            na_mask = df_close_adj.iloc[0].isna()
+            na_ind = [i for i in range(len(df_close_adj.columns)) if na_mask.iloc[i] == True]
             
+            for ind in na_ind:
+                df_close_adj.iloc[0,ind] = df_close_adj.iloc[1,ind]
+
+            df_close_adj.to_csv('pre_close_adj.csv')
             df_close.to_csv('pre_close.csv')
             self.df_pre = df_close
 
