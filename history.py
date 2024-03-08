@@ -621,7 +621,7 @@ if __name__ == '__main__':
 
     # 生成交易日历
     date_list = list(opendate_df['pretrade_date'])
-
+    
     stock_code = all_stock(token)
     
     # 收盘价-前数据提取
