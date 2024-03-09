@@ -88,9 +88,6 @@ class Direction():
                 df['vol_ratio'] #= 
 
 
-
-
-
 if __name__ == '__main__':
     import tushare as ts
     # 获取今天的日期

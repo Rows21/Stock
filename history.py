@@ -160,6 +160,8 @@ class History_M():
             market_heat[i] = sum(data * params) + df_hist['rank_param'][i]
 
         df_hist['market_heat'] = market_heat
+        df_hist['market_heat_R'] = df_hist['market_heat'].rank(ascending=False)/len(df_hist['market_heat'])
+        df_hist['emo_raid'] = (1 - df_hist['market_heat'].rank(ascending=False)/len(df_hist['market_heat'])) * 100
         
         #df_hist = df_hist.iloc[5:,:]
         df_daily_err = pd.DataFrame(columns=['2', '3', '5', '7', '10', '20'])
@@ -207,14 +209,14 @@ class History_M():
             w2[i] = daily_err[-1] * w_short[0] + daily_err[-2] * w_short[1]
         
         df_hist['weighted_emo'] = w_emo
-        df_hist['weighted_emo_R'] = df_hist['weighted_emo'].rank(ascending=False)
+        df_hist['weighted_emo_R'] = 1-df_hist['weighted_emo'].rank(ascending=False)/len(df_hist['weighted_emo'])
         df_daily_err.to_csv('emo_err.csv')
 
         df_hist['short'] = w1
-        df_hist['short_R'] = 1 - df_hist['short'].rank(ascending=False)/df_hist['short']
+        df_hist['short_R'] = 1 - df_hist['short'].rank(ascending=False)/len(df_hist['short'])
 
         df_hist['long'] = w2
-        df_hist['long_R'] = 1 - df_hist['long'].rank(ascending=False)/df_hist['long']
+        df_hist['long_R'] = 1 - df_hist['long'].rank(ascending=False)/len(df_hist['long'])
 
     
         # 定义分位点列表
@@ -387,14 +389,14 @@ class History_L():
             w2[i] = daily_err[-1] * w_short[0] + daily_err[-2] * w_short[1]
         
         df_hist['weighted_emo'] = w_emo
-        df_hist['weighted_emo_R'] = df_hist['weighted_emo'].rank(ascending=False)
+        df_hist['weighted_emo_R'] = 1 - df_hist['weighted_emo'].rank(ascending=False)/len(df_hist['weighted_emo'])
         df_daily_err.to_csv('emo_err.csv')
 
         df_hist['short'] = w1
-        df_hist['short_R'] = 1 - df_hist['short'].rank(ascending=False)/df_hist['short']
+        df_hist['short_R'] = 1 - df_hist['short'].rank(ascending=False)/len(df_hist['short'])
 
         df_hist['long'] = w2
-        df_hist['long_R'] = 1 - df_hist['long'].rank(ascending=False)/df_hist['long']
+        df_hist['long_R'] = 1 - df_hist['long'].rank(ascending=False)/len(df_hist['long'])
 
     
         # 定义分位点列表
@@ -565,14 +567,14 @@ class History_S():
             w2[i] = daily_err[-1] * w_short[0] + daily_err[-2] * w_short[1]
         
         df_hist['weighted_emo'] = w_emo
-        df_hist['weighted_emo_R'] = df_hist['weighted_emo'].rank(ascending=False)
+        df_hist['weighted_emo_R'] = 1 - df_hist['weighted_emo'].rank(ascending=False)/len(df_hist['weighted_emo'])
         df_daily_err.to_csv('emo_err.csv')
 
         df_hist['short'] = w1
-        df_hist['short_R'] = 1 - df_hist['short'].rank(ascending=False)/df_hist['short']
+        df_hist['short_R'] = 1 - df_hist['short'].rank(ascending=False)/len(df_hist['short'])
 
         df_hist['long'] = w2
-        df_hist['long_R'] = 1 - df_hist['long'].rank(ascending=False)/df_hist['long']
+        df_hist['long_R'] = 1 - df_hist['long'].rank(ascending=False)/len(df_hist['long'])
 
         # 定义分位点列表
         quantiles = [0, 0.1, 0.42, 0.58, 0.9, 1]

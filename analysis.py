@@ -40,15 +40,6 @@ class daily_in():
         if float(self.date_str) in df_close['trade_date'].tolist():
             self.df_pre = df_close
         else:
-            # 在第一行插入新行
-            ts_today = self.daily['ts_code']
-            new_row = pd.Series([np.nan] * len(df_close.columns), index=df_close.columns)
-
-            df_close = pd.concat([pd.DataFrame([new_row]), df_close]).reset_index(drop=True)
-            df_close['trade_date'][0] = int(self.date_str)
-            df_close_adj = pd.concat([pd.DataFrame([new_row]), df_close_adj]).reset_index(drop=True)
-            df_close_adj['trade_date'][0] = int(self.date_str)
-
             adj = pro.query('adj_factor',  trade_date=self.date_str)
             adj_pre = pro.query('adj_factor',  trade_date=self.trade_cal[0])
             feature = pd.merge(adj, adj_pre, on='ts_code', how='outer')
@@ -60,13 +51,21 @@ class daily_in():
                 print(filtered_feature['ts_code'].tolist())
                 for tss in filtered_feature['ts_code'].tolist():
                     if tss in df_close.columns:
-                        adj_pre = filtered_feature[filtered_feature['ts_code'] == tss]['trade_date_y']
-                        adj_aft = filtered_feature[filtered_feature['ts_code'] == tss]['trade_date_x']
+                        adj_pre = filtered_feature[filtered_feature['ts_code'] == tss]['adj_factor_y']
+                        adj_aft = filtered_feature[filtered_feature['ts_code'] == tss]['adj_factor_x']
                         df_close[tss] = df_close[tss] * adj_pre / adj_aft
                         df_close_adj[tss] = df_close[tss] * adj_pre / adj_aft
                     else:
                         df_close[tss] = pd.Series([np.nan] * len(df_close))
                         df_close_adj[tss] = pd.Series([np.nan] * len(df_close_adj))
+            
+            # 在第一行插入新行
+            ts_today = self.daily['ts_code']
+            new_row = pd.Series([np.nan] * len(df_close.columns), index=df_close.columns)
+            df_close = pd.concat([pd.DataFrame([new_row]), df_close]).reset_index(drop=True)
+            df_close['trade_date'][0] = int(self.date_str)
+            df_close_adj = pd.concat([pd.DataFrame([new_row]), df_close_adj]).reset_index(drop=True)
+            df_close_adj['trade_date'][0] = int(self.date_str)
 
             # 不变的前复权价
             # new
@@ -373,17 +372,27 @@ if __name__ == '__main__':
         
     
     from history import History_M
-    histm = History_M(time, stock_code, token=token)
+    histm = History_M(time_l, stock_code, token=token)
     df_M_now = histm.get_timeseries(df_L)  
 
     from history import History_L
-    histl = History_L(time, token=token)
+    histl = History_L(time_l, token=token)
     df_LB_now = histl.get_timeseries(df_LB)
 
     from history import History_S
-    hists = History_S(time, token=token)
+    hists = History_S(time_l, token=token)
     df_S_now = hists.get_timeseries(df_S) 
 
+    df_M_now.columns = ['日期', '成交量', '上涨数', '涨幅>2%', '涨幅中位', '涨幅均值', '新高', 
+                        '新低', 'MA20', '指数', 'param_index', 'rank', 'rank_param', '市场水温', 
+                        '市场水温Rank', '情绪雷达', '情绪加权平均', '参考仓位', '短期波动', '短期强度', 
+                        '长期趋势', '趋势强度', '市场研判']
     df_M_now.to_csv('今日长线.csv')
+    df_LB_now.columns = ['date', '成交量', '1', '2', '3', '4', '5', '6', '7', '7+', '涨停数', 
+                        '跌停数', '炸板率', '连板高度', '连板股数', '连板溢价', '连板情绪', 'l_bar', 
+                        '连板高度', '情绪加权', '参考仓位', '短期波动', '短期强度', '长期趋势', '趋势强度', '连板研判']
     df_LB_now.to_csv('今日连板.csv')
+    df_S_now.columns = ['date', '1', '2', '3', '4', '5', '6', '7', '8', '>9', '>7', 
+                        '短期情绪', '情绪阈值', '情绪加权', '参考仓位', '短期波动', '短期强度', 
+                        '长期趋势', '趋势强度', '短期研判']
     df_S_now.to_csv('今日短线.csv')
