@@ -12,9 +12,26 @@ class Direction():
         
         date_list.reverse()
         date_list = date_list[date_list.index('20200103'):] # start from 2020
+        
+        # total
+        counter11 = Counter(label['一阶1']) + Counter(label['一阶2'])
+        counter21 = Counter(label['模糊1']) + Counter(label['模糊2'])
+        counter_main = counter11 + Counter({key: value * 0.3 for key, value in counter21.items()})
+        del counter_main[0]
+        counter_dict = dict(counter_main)
+        style_all = pd.DataFrame.from_dict(counter_dict, orient='index', columns=['count'])
 
+        counter12 = Counter(label['二阶1']) + Counter(label['二阶2']) + Counter(label['二阶3'])
+        counter22 = Counter(label['模糊1.1']) + Counter(label['模糊2.1'])
+        counter_main = counter12 + Counter({key: value * 0.3 for key, value in counter22.items()})
+        del counter_main[0]
+        counter_dict = dict(counter_main)
+        field_all = pd.DataFrame.from_dict(counter_dict, orient='index', columns=['count'])
+
+        lab_list = [style_all['count'].tolist(),field_all['count'].tolist()]
+
+        last_rank = None
         for i, date in enumerate(date_list[20:]):
-            
             
             date_20 = date_list[i]
             # 拉取1-20天的交易数据
@@ -82,10 +99,30 @@ class Direction():
             field_short = pd.DataFrame.from_dict(counter_dict, orient='index', columns=['count'])
 
             # 强度和比例强度
-            for i, df in enumerate([style_main, field_main, style_short, field_short]):
+            df_1 = []
+            rank = []
+            rank_dif = []
+            for k, df in enumerate([style_main, field_main, style_short, field_short]):
+                temp = None
                 temp = df['count'].tolist()
-                df['vol'] = (temp - np.min(temp)) * (np.max(temp) - np.min(temp))
-                df['vol_ratio'] #= 
+                lab = lab_list[k % 2]
+                df['vol'] = (temp - np.min(temp)) / (np.max(temp) - np.min(temp))
+                temp = [temp[j]/lab[j] for j in range(len(lab))]
+                df['vol_ratio'] = (temp - np.min(temp)) / (np.max(temp) - np.min(temp))
+
+                res = df['vol'] * 0.7 + df['vol_ratio'] * 0.3
+                # OUT5-8
+                df_1.append(res)
+                # OUT9-12
+                rank.append(res.rank(ascending=False))
+                # OUt13-16
+                if i > 0:
+                    rank_dif.append()
+
+                # 保存上一日排名值
+            last_rank = rank
+
+
 
 
 if __name__ == '__main__':
