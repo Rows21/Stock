@@ -327,8 +327,8 @@ if __name__ == '__main__':
     current_time = datetime.now()
 
     # 提取日期部分的天数
-    time_c = current_time.date()
-    #time_c = pd.to_datetime('2024-03-01')
+    #time_c = current_time.date()
+    time_c = pd.to_datetime('2024-03-11')
 
     time_c = time_c.strftime('%Y%m%d') 
     token = 'c336245e66e2882632285493a7d0ebc23a2fbb7392b74e4b3855a222'

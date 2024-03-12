@@ -320,7 +320,8 @@ class History_L():
         h_bar = [0] * len(date_list)
         for i, date in enumerate(date_list):
             data = df_hist.iloc[i]
-            param0 = sum(0.8 * data[2:10]) + 0.5 * data['连板高度']
+            l_param = [1.2, 1.05, 0.9, 0.75, 0.6, 0.45, 0.225, 0.075]
+            param0 = sum(l_param * data[2:10]) + 0.5 * data['连板高度']
 
             amt_rank = df_hist.loc[0:i,]['成交量'].rank(ascending=False)
             amt_param = 1-amt_rank[i]/(i+1)
@@ -335,7 +336,7 @@ class History_L():
             stockout_rank = df_hist.loc[0:i,]['连板溢价'].rank(ascending=False)
             stockout_param = 1-stockout_rank[i]/(i+1)
 
-            l_emo[i] = param0 + amt_param + up_param+down_param+zha_param+stockno_param+stockout_param
+            l_emo[i] = 0.75*param0 + 2*amt_param + 2*up_param + 2*down_param + 2*zha_param + 2*stockno_param + 2*stockout_param
             l_bar[i] = np.median(l_emo[:i])
             h_bar[i] = np.median(df_hist.loc[0:i,]['连板高度'])
 
