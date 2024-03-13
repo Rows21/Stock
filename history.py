@@ -167,6 +167,7 @@ class History_M():
         df_daily_err = pd.DataFrame(columns=['2', '3', '5', '7', '10', '20'])
         # qing xu pian cha
         av2, av3, av5, av7, av10, av20 = [],[],[],[],[],[]
+        w_0 = []
         w_emo = [None] * len(date_list)
         w1 = [None] * len(date_list)
         w2 = [None] * len(date_list)
@@ -175,39 +176,41 @@ class History_M():
             
             if i >= 2:
                 av2.append(np.mean(df_hist['market_heat'][i-2:i]))
-                daily_err[0] = np.mean(df_hist['market_heat'][i-2:i]) - np.median(av2)
+                daily_err[0] = np.mean(df_hist['market_heat'][i-2:i]) #- np.median(av2)
 
             if i >= 3:
                 av3.append(np.mean(df_hist['market_heat'][i-3:i]))
-                daily_err[1] = np.mean(df_hist['market_heat'][i-3:i]) - np.median(av3)
+                daily_err[1] = np.mean(df_hist['market_heat'][i-3:i]) #- np.median(av3)
 
             if i >= 5:
                 av5.append(np.mean(df_hist['market_heat'][i-5:i]))
-                daily_err[2] = np.mean(df_hist['market_heat'][i-5:i]) - np.median(av5)
+                daily_err[2] = np.mean(df_hist['market_heat'][i-5:i]) #- np.median(av5)
             
             if i >= 7:
                 av7.append(np.mean(df_hist['market_heat'][i-7:i]))
-                daily_err[3] = np.mean(df_hist['market_heat'][i-7:i]) - np.median(av7)
+                daily_err[3] = np.mean(df_hist['market_heat'][i-7:i]) #- np.median(av7)
 
             if i >= 10:
                 av10.append(np.mean(df_hist['market_heat'][i-10:i]))
-                daily_err[4] = np.mean(df_hist['market_heat'][i-10:i]) - np.median(av10)
+                daily_err[4] = np.mean(df_hist['market_heat'][i-10:i]) #- np.median(av10)
 
             if i >= 20:
                 av20.append(np.mean(df_hist['market_heat'][i-20:i]))
-                daily_err[5] = np.mean(df_hist['market_heat'][i-20:i]) - np.median(av20)
+                daily_err[5] = np.mean(df_hist['market_heat'][i-20:i]) #s- np.median(av20)
             #print(np.median(av2),np.median(av3),np.median(av5),np.median(av7),np.median(av10),np.median(av20))
             #print(np.mean(df_hist['market_heat'][i-2:i]))
             df_daily_err.loc[i] = daily_err
 
             # weighted mean emo
-            w_emo_param = [0.08, 0.12, 0.3, 0.18, 0.2, 0.12]
-            w_emo[i] = sum([daily_err[j] * w_emo_param[j] for j in range(len(daily_err))])
-
+            w_0_param = [0.08, 0.12, 0.3, 0.18, 0.2, 0.12]
+            w_today = sum([daily_err[j] * w_0_param[j] for j in range(len(daily_err))])
+            w_0.append(w_today)
+            
             w_short = [0.55,0.45]
             w1[i] = daily_err[0] * w_short[0] + daily_err[1] * w_short[1]
             w2[i] = daily_err[-1] * w_short[0] + daily_err[-2] * w_short[1]
-        
+
+        w_emo = w_0 - np.median(w_0)
         df_hist['weighted_emo'] = w_emo
         df_hist['weighted_emo_R'] = 1-df_hist['weighted_emo'].rank(ascending=False)/len(df_hist['weighted_emo'])
         df_daily_err.to_csv('emo_err.csv')
@@ -348,6 +351,7 @@ class History_L():
         df_daily_err = pd.DataFrame(columns=['2', '3', '5', '7', '10', '20'])
         # qing xu pian cha
         av2, av3, av5, av7, av10, av20 = [],[],[],[],[],[]
+        w_0 = []
         w_emo = [None] * len(date_list)
         w1 = [None] * len(date_list)
         w2 = [None] * len(date_list)
@@ -356,39 +360,41 @@ class History_L():
             
             if i >= 2:
                 av2.append(np.mean(df_hist['l_emo'][i-2:i]))
-                daily_err[0] = np.mean(df_hist['l_emo'][i-2:i]) - np.median(av2)
+                daily_err[0] = np.mean(df_hist['l_emo'][i-2:i]) #- np.median(av2)
 
             if i >= 3:
                 av3.append(np.mean(df_hist['l_emo'][i-3:i]))
-                daily_err[1] = np.mean(df_hist['l_emo'][i-3:i]) - np.median(av3)
+                daily_err[1] = np.mean(df_hist['l_emo'][i-3:i]) #- np.median(av3)
 
             if i >= 5:
                 av5.append(np.mean(df_hist['l_emo'][i-5:i]))
-                daily_err[2] = np.mean(df_hist['l_emo'][i-5:i]) - np.median(av5)
+                daily_err[2] = np.mean(df_hist['l_emo'][i-5:i]) #- np.median(av5)
             
             if i >= 7:
                 av7.append(np.mean(df_hist['l_emo'][i-7:i]))
-                daily_err[3] = np.mean(df_hist['l_emo'][i-7:i]) - np.median(av7)
+                daily_err[3] = np.mean(df_hist['l_emo'][i-7:i]) #- np.median(av7)
 
             if i >= 10:
                 av10.append(np.mean(df_hist['l_emo'][i-10:i]))
-                daily_err[4] = np.mean(df_hist['l_emo'][i-10:i]) - np.median(av10)
+                daily_err[4] = np.mean(df_hist['l_emo'][i-10:i]) #- np.median(av10)
 
             if i >= 20:
                 av20.append(np.mean(df_hist['l_emo'][i-20:i]))
-                daily_err[5] = np.mean(df_hist['l_emo'][i-20:i]) - np.median(av20)
+                daily_err[5] = np.mean(df_hist['l_emo'][i-20:i]) #- np.median(av20)
             #print(np.median(av2),np.median(av3),np.median(av5),np.median(av7),np.median(av10),np.median(av20))
             #print(np.mean(df_hist['market_heat'][i-2:i]))
             df_daily_err.loc[i] = daily_err
 
             # weighted mean emo
-            w_emo_param = [0.08, 0.12, 0.3, 0.18, 0.2, 0.12]
-            w_emo[i] = sum([daily_err[j] * w_emo_param[j] for j in range(len(daily_err))])
-
+            w_0_param = [0.08, 0.12, 0.3, 0.18, 0.2, 0.12]
+            w_today = sum([daily_err[j] * w_0_param[j] for j in range(len(daily_err))])
+            w_0.append(w_today)
+            
             w_short = [0.55,0.45]
             w1[i] = daily_err[0] * w_short[0] + daily_err[1] * w_short[1]
             w2[i] = daily_err[-1] * w_short[0] + daily_err[-2] * w_short[1]
         
+        w_emo = w_0 - np.median(w_0)
         df_hist['weighted_emo'] = w_emo
         df_hist['weighted_emo_R'] = 1 - df_hist['weighted_emo'].rank(ascending=False)/len(df_hist['weighted_emo'])
         df_daily_err.to_csv('emo_err.csv')
@@ -526,6 +532,7 @@ class History_S():
         df_daily_err = pd.DataFrame(columns=['2', '3', '5', '7', '10', '20'])
         # qing xu pian cha
         av2, av3, av5, av7, av10, av20 = [],[],[],[],[],[]
+        w_0 = []
         w_emo = [None] * len(date_list)
         w1 = [None] * len(date_list)
         w2 = [None] * len(date_list)
@@ -534,39 +541,41 @@ class History_S():
             
             if i >= 2:
                 av2.append(np.mean(df_hist['semo'][i-2:i]))
-                daily_err[0] = np.mean(df_hist['semo'][i-2:i]) - np.median(av2)
+                daily_err[0] = np.mean(df_hist['semo'][i-2:i]) #- np.median(av2)
 
             if i >= 3:
                 av3.append(np.mean(df_hist['semo'][i-3:i]))
-                daily_err[1] = np.mean(df_hist['semo'][i-3:i]) - np.median(av3)
+                daily_err[1] = np.mean(df_hist['semo'][i-3:i]) #- np.median(av3)
 
             if i >= 5:
                 av5.append(np.mean(df_hist['semo'][i-5:i]))
-                daily_err[2] = np.mean(df_hist['semo'][i-5:i]) - np.median(av5)
+                daily_err[2] = np.mean(df_hist['semo'][i-5:i]) #- np.median(av5)
             
             if i >= 7:
                 av7.append(np.mean(df_hist['semo'][i-7:i]))
-                daily_err[3] = np.mean(df_hist['semo'][i-7:i]) - np.median(av7)
+                daily_err[3] = np.mean(df_hist['semo'][i-7:i]) #- np.median(av7)
 
             if i >= 10:
                 av10.append(np.mean(df_hist['semo'][i-10:i]))
-                daily_err[4] = np.mean(df_hist['semo'][i-10:i]) - np.median(av10)
+                daily_err[4] = np.mean(df_hist['semo'][i-10:i]) #- np.median(av10)
 
             if i >= 20:
                 av20.append(np.mean(df_hist['semo'][i-20:i]))
-                daily_err[5] = np.mean(df_hist['semo'][i-20:i]) - np.median(av20)
+                daily_err[5] = np.mean(df_hist['semo'][i-20:i]) #- np.median(av20)
             #print(np.median(av2),np.median(av3),np.median(av5),np.median(av7),np.median(av10),np.median(av20))
             #print(np.mean(df_hist['market_heat'][i-2:i]))
             df_daily_err.loc[i] = daily_err
 
             # weighted mean emo
-            w_emo_param = [0.08, 0.12, 0.3, 0.18, 0.2, 0.12]
-            w_emo[i] = sum([daily_err[j] * w_emo_param[j] for j in range(len(daily_err))])
+            w_0_param = [0.08, 0.12, 0.3, 0.18, 0.2, 0.12]
+            w_today = sum([daily_err[j] * w_0_param[j] for j in range(len(daily_err))])
+            w_0.append(w_today)
 
             w_short = [0.55,0.45]
             w1[i] = daily_err[0] * w_short[0] + daily_err[1] * w_short[1]
             w2[i] = daily_err[-1] * w_short[0] + daily_err[-2] * w_short[1]
         
+        w_emo = w_0 - np.median(w_0)
         df_hist['weighted_emo'] = w_emo
         df_hist['weighted_emo_R'] = 1 - df_hist['weighted_emo'].rank(ascending=False)/len(df_hist['weighted_emo'])
         df_daily_err.to_csv('emo_err.csv')

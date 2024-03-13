@@ -368,29 +368,29 @@ if __name__ == '__main__':
         df_R.to_csv('.\\logs\\' + time + 'shortemo.csv')
         df_S.to_csv('short.csv')
         df_S.to_csv('.\\logs\\' + time + 'short.csv')
-        
     
+    
+    df_R.to_excel('容错率.xlsx')
     from history import History_M
     histm = History_M(time_l, stock_code, token=token)
     df_M_now = histm.get_timeseries(df_L)  
-
-    from history import History_L
-    histl = History_L(time_l, token=token)
-    df_LB_now = histl.get_timeseries(df_LB)
-
-    from history import History_S
-    hists = History_S(time_l, token=token)
-    df_S_now = hists.get_timeseries(df_S) 
-
     df_M_now.columns = ['日期', '成交量', '上涨数', '涨幅>2%', '涨幅中位', '涨幅均值', '新高', 
                         '新低', 'MA20', '指数', 'param_index', 'rank', 'rank_param', '市场水温', 
                         '市场水温Rank', '情绪雷达', '情绪加权平均', '参考仓位', '短期波动', '短期强度', 
                         '长期趋势', '趋势强度', '市场研判']
     df_M_now.to_excel('今日长线.xlsx')
+
+    from history import History_L
+    histl = History_L(time_l, token=token)
+    df_LB_now = histl.get_timeseries(df_LB)
     df_LB_now.columns = ['date', '成交量', '1', '2', '3', '4', '5', '6', '7', '7+', '涨停数', 
                         '跌停数', '炸板率', '连板高度', '连板股数', '连板溢价', '连板情绪', 'l_bar', 
                         '连板高度', '情绪加权', '参考仓位', '短期波动', '短期强度', '长期趋势', '趋势强度', '连板研判']
     df_LB_now.to_excel('今日连板.xlsx')
+
+    from history import History_S
+    hists = History_S(time_l, token=token)
+    df_S_now = hists.get_timeseries(df_S) 
     df_S_now.columns = ['date', '1', '2', '3', '4', '5', '6', '7', '8', '>9', '>7', 
                         '短期情绪', '情绪阈值', '情绪加权', '参考仓位', '短期波动', '短期强度', 
                         '长期趋势', '趋势强度', '短期研判']
