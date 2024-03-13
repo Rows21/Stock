@@ -328,7 +328,7 @@ if __name__ == '__main__':
 
     # 提取日期部分的天数
     #time_c = current_time.date()
-    time_c = pd.to_datetime('2024-03-11')
+    time_c = pd.to_datetime('2024-03-12')
 
     time_c = time_c.strftime('%Y%m%d') 
     token = 'c336245e66e2882632285493a7d0ebc23a2fbb7392b74e4b3855a222'
@@ -359,7 +359,6 @@ if __name__ == '__main__':
         df_LB.to_csv('lianban.csv')
         df_LB.to_csv('.\\logs\\' + time + 'lianban.csv')
 
-
         # short
         df_close = pd.read_csv('./pre_close.csv').iloc[:,1:]
         lianban = pd.read_csv('./lianban.csv').iloc[:,1:]
@@ -387,12 +386,12 @@ if __name__ == '__main__':
                         '新低', 'MA20', '指数', 'param_index', 'rank', 'rank_param', '市场水温', 
                         '市场水温Rank', '情绪雷达', '情绪加权平均', '参考仓位', '短期波动', '短期强度', 
                         '长期趋势', '趋势强度', '市场研判']
-    df_M_now.to_csv('今日长线.csv')
+    df_M_now.to_excel('今日长线.xlsx')
     df_LB_now.columns = ['date', '成交量', '1', '2', '3', '4', '5', '6', '7', '7+', '涨停数', 
                         '跌停数', '炸板率', '连板高度', '连板股数', '连板溢价', '连板情绪', 'l_bar', 
                         '连板高度', '情绪加权', '参考仓位', '短期波动', '短期强度', '长期趋势', '趋势强度', '连板研判']
-    df_LB_now.to_csv('今日连板.csv')
+    df_LB_now.to_excel('今日连板.xlsx')
     df_S_now.columns = ['date', '1', '2', '3', '4', '5', '6', '7', '8', '>9', '>7', 
                         '短期情绪', '情绪阈值', '情绪加权', '参考仓位', '短期波动', '短期强度', 
                         '长期趋势', '趋势强度', '短期研判']
-    df_S_now.to_csv('今日短线.csv')
+    df_S_now.to_excel('今日短线.xlsx')
