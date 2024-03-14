@@ -1,8 +1,10 @@
 import numpy as np
 import pandas as pd
+from tqdm import tqdm
+
 from datetime import datetime, timedelta
 import tushare as ts
-from tqdm import tqdm
+from direction import Direction
 
 def all_stock(token):
     ts.set_token(token)
@@ -327,8 +329,10 @@ if __name__ == '__main__':
     current_time = datetime.now()
 
     # 提取日期部分的天数
-    #time_c = current_time.date()
-    time_c = pd.to_datetime('2024-03-12')
+    time_c = current_time.date()
+    if current_time.hour < 16:
+        time_c = time_c - timedelta(days=1)
+    #time_c = pd.to_datetime('2024-03-12')
 
     time_c = time_c.strftime('%Y%m%d') 
     token = 'c336245e66e2882632285493a7d0ebc23a2fbb7392b74e4b3855a222'
@@ -342,9 +346,12 @@ if __name__ == '__main__':
     cal = pro.trade_cal(exchange='SZSE', start_date=str(close['date'][len(close)-1]), end_date=time_c)
     time_l = cal[cal['is_open'] == 1]['cal_date'].tolist()
     time_l.reverse()
-
+    
+    print('------------------')
+    print('开始风控计算：')
     for time in time_l:
         print(time)
+
         # 前数据提取
         # 更新收盘价
         pre20 = daily_in(time, token)
@@ -369,7 +376,36 @@ if __name__ == '__main__':
         df_S.to_csv('short.csv')
         df_S.to_csv('.\\logs\\' + time + 'short.csv')
     
-    
+    # 方向
+    # 数据导入
+    print('------------------')
+    print('开始方向计算：')
+    df_close = pd.read_csv('./pre_close.csv').iloc[:,1:]
+    df_close_adj = pd.read_csv('./pre_close_adj.csv').iloc[:,1:]
+    label = pd.read_excel('RPS_label.xlsx', sheet_name='A股数据库20240206')
+    close = pd.read_csv('./dlogs/style.csv').iloc[:,1:]
+
+    cal = pro.trade_cal(exchange='SZSE', start_date=str(close['date'][len(close)-1]), end_date=time_c)
+    time_l = cal[cal['is_open'] == 1]['cal_date'].tolist()
+    time_l.reverse()
+
+    dire = Direction(daily=True)
+    style_ts, field_ts, disp, style_t, field_t = dire.get_hist(time_l[1:], df_close, df_close_adj,label)
+
+    print('------------------')
+    print('开始数据储存：')
+    style_ts.to_csv('.\\dlogs\\' + time + 'style.csv')
+    field_ts.to_csv('.\\dlogs\\' + time + 'field.csv')
+    disp.to_csv('.\\dlogs\\' + time + 'dispersion.csv')
+    style_ts.to_excel('风格.xlsx')
+    field_ts.to_excel('行业.xlsx')
+    disp.columns = ['date', '风格', '行业']
+    disp.to_excel('离散度.xlsx')
+    style_t.columns = ['赛道','上榜数','总值', '强度', '比例强度', '主线值', '主线值排名', '档位']
+    style_t.to_excel('今日风格上榜.xlsx')
+    field_t.columns = ['赛道','上榜数','总值', '强度', '比例强度', '主线值', '主线值排名', '档位']
+    field_t.to_excel('今日行业上榜.xlsx')
+
     df_R.to_excel('容错率.xlsx')
     from history import History_M
     histm = History_M(time_l, stock_code, token=token)
@@ -395,3 +431,5 @@ if __name__ == '__main__':
                         '短期情绪', '情绪阈值', '情绪加权', '参考仓位', '短期波动', '短期强度', 
                         '长期趋势', '趋势强度', '短期研判']
     df_S_now.to_excel('今日短线.xlsx')
+
+    

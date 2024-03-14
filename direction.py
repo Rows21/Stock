@@ -4,21 +4,28 @@ from collections import Counter
 from tqdm import tqdm
 
 class Direction():
-    def __init__(self) -> None:
-        # 创建历史数据空表
-        self.df_upratio = pd.DataFrame(None, columns = ['date', '>100', '80-100', '60-80', '50-60', '40-50', '30-40', '20-30','all','bar','sump','w_sump'])
-        self.short = pd.DataFrame(None, columns = ['date', '1', '2', '3', '4', '5', '6', '7', '8', '>9', '>7','semo','bar'])
-        
-    
-    def get_hist(self, date_list, df_close, df_close_adj, label, daily=False):
+    def __init__(self, daily=False) -> None:
+        self.daily = daily
+        if self.daily == True:
+            self.style = pd.read_csv('./dlogs/style.csv').iloc[:,1:]
+            self.field = pd.read_csv('./dlogs/field.csv').iloc[:,1:]
+            self.disp = pd.read_csv('./dlogs/dispersion.csv').iloc[:,1:]
+
+
+    def get_hist(self, date_list, df_close, df_close_adj, label):
         
         date_list.reverse()
-        date_list = date_list[date_list.index('20240112'):] # start from 2020
-
+        if not self.daily:
+            date_list = date_list[date_list.index('20200103'):] # start from 2020
+        else:
+            id = df_close[df_close['trade_date'] == int(date_list[0])].index[0]
+            date_list = df_close['trade_date'][id:(id+22)].tolist()
+            date_list.reverse()
         style_ts = None
         field_ts = None
 
-        progress_bar = tqdm(total=len(date_list[20:]), ncols=200)
+        #progress_bar = tqdm(total=len(date_list[20:]), ncols=200)
+        #all_date = len(date_list[20:])
         # total
         counter11 = Counter(label['一阶1']) + Counter(label['一阶2'])
         counter21 = Counter(label['模糊1']) + Counter(label['模糊2'])
@@ -43,7 +50,9 @@ class Direction():
         last_rank = []
         disp = pd.DataFrame(columns=['date', 'style', 'field'])
 
-        for i, date in enumerate(date_list[20:]):
+        enu_list = date_list[20:]
+
+        for i, date in tqdm(enumerate(enu_list)):
             
             date_20 = date_list[i]
             # 拉取1-20天的交易数据
@@ -76,7 +85,7 @@ class Direction():
             short_rps = [sum(rps_df.iloc[i,-5:-2] * shortrps_params) for i in range(rps_df.shape[0])]
             rps_df['main'], rps_df['short'] = main_rps, short_rps
 
-            rps_df: pd.DataFrame = pd.merge(rps_df,label,on='证券代码',how='left')
+            rps_df: pd.DataFrame = pd.merge(rps_df,label,on='证券代码',how='right')
             #rps_df = rps_df.dropna()
             main_top_300, short_top_300 = rps_df.nlargest(300, 'main'), rps_df.nlargest(300, 'short')
             
@@ -97,28 +106,33 @@ class Direction():
             data = [[key, value] for key, value in counter_dict.items()]
             field_main = pd.DataFrame(data, columns=['Key', 'count'])
 
-            # 短期上榜
-            counter11 = Counter(short_top_300['一阶1']) + Counter(short_top_300['一阶2'])
-            counter21 = Counter(short_top_300['模糊1']) + Counter(short_top_300['模糊2'])
-            counter_main = counter11 + Counter({key: value * 0.3 for key, value in counter21.items()})
-            del counter_main[0]
-            counter_dict = dict(counter_main)
-            data = [[key, value] for key, value in counter_dict.items()]
-            style_short = pd.DataFrame(data, columns=['Key', 'count'])
+            strength_list = [style_main, field_main]
+            
+            if self.daily:
+                # 短期上榜
+                counter11 = Counter(short_top_300['一阶1']) + Counter(short_top_300['一阶2'])
+                counter21 = Counter(short_top_300['模糊1']) + Counter(short_top_300['模糊2'])
+                counter_main = counter11 + Counter({key: value * 0.3 for key, value in counter21.items()})
+                del counter_main[0]
+                counter_dict = dict(counter_main)
+                data = [[key, value] for key, value in counter_dict.items()]
+                style_short = pd.DataFrame(data, columns=['Key', 'count'])
 
-            counter12 = Counter(short_top_300['二阶1']) + Counter(short_top_300['二阶2']) + Counter(short_top_300['二阶3'])
-            counter22 = Counter(short_top_300['模糊1.1']) + Counter(short_top_300['模糊2.1'])
-            counter_main = counter12 + Counter({key: value * 0.3 for key, value in counter22.items()})
-            del counter_main[0]
-            counter_dict = dict(counter_main)
-            data = [[key, value] for key, value in counter_dict.items()]
-            field_short = pd.DataFrame(data, columns=['Key', 'count'])
+                counter12 = Counter(short_top_300['二阶1']) + Counter(short_top_300['二阶2']) + Counter(short_top_300['二阶3'])
+                counter22 = Counter(short_top_300['模糊1.1']) + Counter(short_top_300['模糊2.1'])
+                counter_main = counter12 + Counter({key: value * 0.3 for key, value in counter22.items()})
+                del counter_main[0]
+                counter_dict = dict(counter_main)
+                data = [[key, value] for key, value in counter_dict.items()]
+                field_short = pd.DataFrame(data, columns=['Key', 'count'])
+
+                strength_list = [style_main, field_main, style_short, field_short]
 
             # 强度和比例强度 
             #rank_dif = []
             # 定义分位点列表
             quantiles = [0, 0.4, 0.6, 0.8, 1]
-            for k, df in enumerate([style_main, field_main, style_short, field_short]):
+            for k, df in enumerate(strength_list):
                 if k % 2 == 0:
                     lab = style_all
                 else:
@@ -132,14 +146,14 @@ class Direction():
                 df['prior'] = df['vol'] * 0.7 + df['vol_ratio'] * 0.3
                 # OUT9-12
                 df['prior_rank'] = df['prior'].rank(ascending=False)
-
+                
                 # OUT13-16
                 if i > 0:
                     df['rank_dif'] = df['prior_rank'] - last_rank[k]['prior_rank']
-                
+                    
                 # 使用 cut() 方法根据分位点划分数据，并生成新的一列 'B'
                 df['position'] = pd.cut(df['prior'], bins=df['prior'].quantile(quantiles), labels=['4', '3', '2', '1'])
-
+                    
                 # 保存上一日排名值
                 if i == 0:
                     last_rank.append(df)
@@ -162,12 +176,17 @@ class Direction():
                 style_ts.loc[i] = [date] + last_rank[0]['position'].tolist()
                 # 行业档位
                 field_ts.loc[i] = [date] + last_rank[1]['position'].tolist()
-                
 
-            progress_bar.set_description(f"date=: {date}")
-            progress_bar.set_postfix({'Iter': i+1})
+            #progress_bar.set_description(f"date=: {date}")
+            #progress_bar.set_postfix({'Iter': i+1/all_date})
 
-        if daily:
+        style_ts.fillna(4)
+        field_ts.fillna(4)
+
+        if self.daily:
+            style_ts = pd.concat([self.style,style_ts.drop(0)])
+            field_ts = pd.concat([self.field,field_ts.drop(0)])
+            disp = pd.concat([self.disp,disp.drop(0)])
             return style_ts, field_ts, disp, last_rank[0], last_rank[2]
         else:
             return style_ts, field_ts, disp
@@ -177,7 +196,7 @@ class Direction():
 if __name__ == '__main__':
     import tushare as ts
     # 获取今天的日期
-    time = pd.to_datetime('2024-03-04')
+    time = pd.to_datetime('2024-01-03')
     formatted_time = time.strftime("%Y%m%d")
 
     # token
@@ -218,6 +237,10 @@ if __name__ == '__main__':
     label = pd.read_excel('RPS_label.xlsx', sheet_name='A股数据库20240206')
     direc = Direction() 
     style_ts, field_ts, disp = direc.get_hist(date_list, df_close, df_close_adj,label)
-    style_ts.to_csv('style.csv')
-    field_ts.to_csv('field.csv')
-    disp.to_csv('dispersion.csv')
+    style_ts.to_csv('.\\dlogs\\style.csv')
+    style_ts.to_excel('风格.xlsx')
+    field_ts.to_excel('行业.xlsx')
+    field_ts.to_csv('.\\dlogs\\field.csv')
+    disp.to_csv('.\\dlogs\\dispersion.csv')
+    disp.columns = ['date', '风格', '行业']
+    disp.to_excel('离散度.xlsx')
