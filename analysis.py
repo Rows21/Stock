@@ -327,6 +327,7 @@ if __name__ == '__main__':
     # 获取今天的日期
     # 获取当前系统时间
     current_time = datetime.now()
+    
 
     # 提取日期部分的天数
     time_c = current_time.date()
@@ -340,7 +341,7 @@ if __name__ == '__main__':
     ts.set_token(token)
     pro = ts.pro_api()
     stock_code = all_stock(token)
-
+    #df = pro.index_daily(ts_code='399300.SZ', start_date='20180101', end_date=time_c)
     close = pd.read_csv('./longemo.csv').iloc[:,1:]
 
     cal = pro.trade_cal(exchange='SZSE', start_date=str(close['date'][len(close)-1]), end_date=time_c)
@@ -376,36 +377,10 @@ if __name__ == '__main__':
         df_S.to_csv('short.csv')
         df_S.to_csv('.\\logs\\' + time + 'short.csv')
     
-    # 方向
-    # 数据导入
-    print('------------------')
-    print('开始方向计算：')
-    df_close = pd.read_csv('./pre_close.csv').iloc[:,1:]
-    df_close_adj = pd.read_csv('./pre_close_adj.csv').iloc[:,1:]
-    label = pd.read_excel('RPS_label.xlsx', sheet_name='A股数据库20240206')
-    close = pd.read_csv('./dlogs/style.csv').iloc[:,1:]
-
-    cal = pro.trade_cal(exchange='SZSE', start_date=str(close['date'][len(close)-1]), end_date=time_c)
-    time_l = cal[cal['is_open'] == 1]['cal_date'].tolist()
-    time_l.reverse()
-
-    dire = Direction(daily=True)
-    style_ts, field_ts, disp, style_t, field_t = dire.get_hist(time_l[1:], df_close, df_close_adj,label)
+    
 
     print('------------------')
     print('开始数据储存：')
-    style_ts.to_csv('.\\dlogs\\' + time + 'style.csv')
-    field_ts.to_csv('.\\dlogs\\' + time + 'field.csv')
-    disp.to_csv('.\\dlogs\\' + time + 'dispersion.csv')
-    style_ts.to_excel('风格.xlsx')
-    field_ts.to_excel('行业.xlsx')
-    disp.columns = ['date', '风格', '行业']
-    disp.to_excel('离散度.xlsx')
-    style_t.columns = ['赛道','上榜数','总值', '强度', '比例强度', '主线值', '主线值排名', '档位']
-    style_t.to_excel('今日风格上榜.xlsx')
-    field_t.columns = ['赛道','上榜数','总值', '强度', '比例强度', '主线值', '主线值排名', '档位']
-    field_t.to_excel('今日行业上榜.xlsx')
-
     df_R.to_excel('容错率.xlsx')
     from history import History_M
     histm = History_M(time_l, stock_code, token=token)
@@ -432,4 +407,33 @@ if __name__ == '__main__':
                         '长期趋势', '趋势强度', '短期研判']
     df_S_now.to_excel('今日短线.xlsx')
 
+    # 方向
+    # 数据导入
+    print('------------------')
+    print('开始方向计算：')
+    df_close = pd.read_csv('./pre_close.csv').iloc[:,1:]
+    df_close_adj = pd.read_csv('./pre_close_adj.csv').iloc[:,1:]
+    label = pd.read_excel('RPS_label.xlsx', sheet_name='A股数据库20240206')
+    close = pd.read_csv('./dlogs/style.csv').iloc[:,1:]
+
+    cal = pro.trade_cal(exchange='SZSE', start_date=str(close['date'][len(close)-1]), end_date=time_c)
+    time_l = cal[cal['is_open'] == 1]['cal_date'].tolist()
+    time_l.reverse()
+
+    dire = Direction(daily=True)
+    style_ts, field_ts, disp, style_t, field_t = dire.get_hist(time_l[1:], df_close, df_close_adj,label)
+
+    style_ts.to_csv('.\\dlogs\\' + time + 'style.csv')
+    field_ts.to_csv('.\\dlogs\\' + time + 'field.csv')
+    disp.to_csv('.\\dlogs\\' + time + 'dispersion.csv')
+    style_ts.to_excel('风格.xlsx')
+    field_ts.to_excel('行业.xlsx')
+    disp.columns = ['date', '风格', '行业']
+    disp.to_excel('离散度.xlsx')
+    style_t.columns = ['赛道','上榜数','总值', '强度', '比例强度', '主线值', '主线值排名', '档位']
+    style_t.to_excel('今日风格上榜.xlsx')
+    field_t.columns = ['赛道','上榜数','总值', '强度', '比例强度', '主线值', '主线值排名', '档位']
+    field_t.to_excel('今日行业上榜.xlsx')
+
+    
     
