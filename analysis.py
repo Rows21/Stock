@@ -341,7 +341,7 @@ if __name__ == '__main__':
     ts.set_token(token)
     pro = ts.pro_api()
     stock_code = all_stock(token)
-    #df = pro.index_daily(ts_code='399300.SZ', start_date='20180101', end_date=time_c)
+    df = pro.index_daily(ts_code='399303.SZ', start_date='20180101', end_date=time_c)
     close = pd.read_csv('./longemo.csv').iloc[:,1:]
 
     cal = pro.trade_cal(exchange='SZSE', start_date=str(close['date'][len(close)-1]), end_date=time_c)

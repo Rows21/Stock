@@ -474,8 +474,8 @@ class History_S():
             daily_param_1[6] = len(up_df[(up_df>= 0.20) & (up_df< 0.30)])
 
             # sum
-            daily_param_1[7] = sum(daily_param_1[0:6])
-            all_up = self.df_upratio['all'].tolist() + [sum(daily_param_1[0:6])]
+            daily_param_1[7] = sum(daily_param_1[0:7])
+            all_up = self.df_upratio['all'].tolist() + [sum(daily_param_1[0:7])]
             daily_param_1[8] = 0.8*np.median(all_up) + 0.2*np.mean(all_up)
 
             # 历史当日数据统计
@@ -601,7 +601,7 @@ class History_S():
 if __name__ == '__main__':
 
     # 获取今天的日期
-    time = pd.to_datetime('2024-03-04')
+    time = pd.to_datetime('2024-03-13')
     formatted_time = time.strftime("%Y%m%d")
 
     # token
