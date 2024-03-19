@@ -377,7 +377,11 @@ if __name__ == '__main__':
         df_S.to_csv('short.csv')
         df_S.to_csv('.\\logs\\' + time + 'short.csv')
     
-    
+    print('设置时间戳：')
+    ts_date = 20220104
+    df_L = df_L.iloc[int(df_L[df_L['date'] == ts_date].index.values):].reset_index().iloc[:,1:]
+    df_LB = df_LB.iloc[int(df_LB[df_LB['date'] == ts_date].index.values):].reset_index().iloc[:,1:]
+    df_S = df_S.iloc[int(df_S[df_S['date'] == ts_date].index.values):].reset_index().iloc[:,1:]
 
     print('------------------')
     print('开始数据储存：')

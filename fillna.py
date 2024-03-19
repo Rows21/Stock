@@ -81,21 +81,22 @@ def pre_close(date_list):
     df_high.to_csv('pre_high_new.csv')
     df_low.to_csv('pre_low_new.csv')
 '''
-p_close = pd.read_csv('pre_close.csv').iloc[:,1:]
-na_mask = p_close.isna()
-for columns in tqdm(p_close.columns):
-    na_ind = [i for i in range(len(na_mask)) if na_mask[columns][i] == True]
-    na_ind.reverse()
-    for ind in na_ind:
-        if ind +1 == len(p_close):
-            p_close[columns][ind] = 0
-        else:
-            p_close[columns][ind] = p_close[columns][ind + 1]
 
-p_close.to_csv('pre_close_adj.csv')
 '''
 if __name__ == '__main__':
 
+    p_close = pd.read_csv('pre_close_new.csv').iloc[:,1:]
+    na_mask = p_close.isna()
+    for columns in tqdm(p_close.columns):
+        na_ind = [i for i in range(len(na_mask)) if na_mask[columns][i] == True]
+        na_ind.reverse()
+        for ind in na_ind:
+            if ind +1 == len(p_close):
+                p_close[columns][ind] = 0
+            else:
+                p_close[columns][ind] = p_close[columns][ind + 1]
+
+    p_close.to_csv('pre_close_adj.csv')
     # 获取今天的日期
     time = datetime.now()
     formatted_time = time.strftime("%Y%m%d")
