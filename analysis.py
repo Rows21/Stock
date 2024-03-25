@@ -348,6 +348,7 @@ if __name__ == '__main__':
     time_l = cal[cal['is_open'] == 1]['cal_date'].tolist()
     time_l.reverse()
     
+    
     print('------------------')
     print('开始风控计算：')
     for time in time_l:
@@ -378,13 +379,14 @@ if __name__ == '__main__':
         df_S.to_csv('.\\logs\\' + time + 'short.csv')
     
     print('设置时间戳：')
-    ts_date = 20220104
-    df_L = df_L.iloc[int(df_L[df_L['date'] == ts_date].index.values):].reset_index().iloc[:,1:]
-    df_LB = df_LB.iloc[int(df_LB[df_LB['date'] == ts_date].index.values):].reset_index().iloc[:,1:]
-    df_S = df_S.iloc[int(df_S[df_S['date'] == ts_date].index.values):].reset_index().iloc[:,1:]
+    #ts_date = 20220104
+    #df_L = df_L.iloc[int(df_L[df_L['date'] == ts_date].index.values):].reset_index().iloc[:,1:]
+    #df_LB = df_LB.iloc[int(df_LB[df_LB['date'] == ts_date].index.values):].reset_index().iloc[:,1:]
+    #df_S = df_S.iloc[int(df_S[df_S['date'] == ts_date].index.values):].reset_index().iloc[:,1:]
 
     print('------------------')
     print('开始数据储存：')
+    df.to_csv('国证2000.csv')
     df_R.to_excel('容错率.xlsx')
     from history import History_M
     histm = History_M(time_l, stock_code, token=token)
