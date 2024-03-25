@@ -341,7 +341,7 @@ if __name__ == '__main__':
     ts.set_token(token)
     pro = ts.pro_api()
     stock_code = all_stock(token)
-    df = pro.index_daily(ts_code='399303.SZ', start_date='20180101', end_date=time_c)
+    
     close = pd.read_csv('./longemo.csv').iloc[:,1:]
 
     cal = pro.trade_cal(exchange='SZSE', start_date=str(close['date'][len(close)-1]), end_date=time_c)
@@ -386,7 +386,6 @@ if __name__ == '__main__':
 
     print('------------------')
     print('开始数据储存：')
-    df.to_csv('国证2000.csv')
     df_R.to_excel('容错率.xlsx')
     from history import History_M
     histm = History_M(time_l, stock_code, token=token)
@@ -395,6 +394,10 @@ if __name__ == '__main__':
                         '新低', 'MA20', '指数', 'param_index', 'rank', 'rank_param', '市场水温', 
                         '市场水温Rank', '情绪雷达', '情绪加权平均', '参考仓位', '短期波动', '短期强度', 
                         '长期趋势', '趋势强度', '市场研判']
+    df = pro.index_daily(ts_code='399303.SZ', start_date=str(df_M_now.loc[20,'日期']), end_date=time_c)
+    ind_list = df[['open','high','low','close']].iloc[::-1].reset_index().iloc[:,1:]
+    df_M_now = df_M_now.reset_index().iloc[:,1:]
+    df_M_now = pd.concat([df_M_now,ind_list],axis=1)
     df_M_now.to_excel('今日长线.xlsx')
 
     from history import History_L
