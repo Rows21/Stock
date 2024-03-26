@@ -18,8 +18,8 @@ class Direction():
         if not self.daily:
             date_list = date_list[date_list.index('20200103'):] # start from 2020
         else:
-            id = df_close[df_close['trade_date'] == int(date_list[0])].index[0]
-            date_list = df_close['trade_date'][id:(id+22)].tolist()
+            id = df_close[df_close['trade_date'] == int(date_list[-1])].index[0]
+            date_list = df_close['trade_date'][:(id+22)].tolist()
             date_list.reverse()
         style_ts = None
         field_ts = None
@@ -187,7 +187,10 @@ class Direction():
             style_ts = pd.concat([self.style,style_ts.drop(0)])
             field_ts = pd.concat([self.field,field_ts.drop(0)])
             disp = pd.concat([self.disp,disp.drop(0)])
-            return style_ts, field_ts, disp, last_rank[0], last_rank[2]
+            style_ts = style_ts.fillna(4)
+            field_ts = field_ts.fillna(4)
+            disp = disp.fillna(4)
+            return style_ts, field_ts, disp, last_rank[0], last_rank[1]
         else:
             return style_ts, field_ts, disp
 

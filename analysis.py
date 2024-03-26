@@ -430,6 +430,7 @@ if __name__ == '__main__':
     time_l.reverse()
 
     dire = Direction(daily=True)
+
     style_ts, field_ts, disp, style_t, field_t = dire.get_hist(time_l[1:], df_close, df_close_adj,label)
 
     style_ts.to_csv('.\\dlogs\\' + time + 'style.csv')
@@ -439,9 +440,9 @@ if __name__ == '__main__':
     field_ts.to_excel('行业.xlsx')
     disp.columns = ['date', '风格', '行业']
     disp.to_excel('离散度.xlsx')
-    style_t.columns = ['赛道','上榜数','总值', '强度', '比例强度', '主线值', '主线值排名', '档位']
+    style_t.columns = ['赛道','上榜数','总值', '强度', '比例强度', '主线值', '主线值排名', '前日差', '档位']
     style_t.to_excel('今日风格上榜.xlsx')
-    field_t.columns = ['赛道','上榜数','总值', '强度', '比例强度', '主线值', '主线值排名', '档位']
+    field_t.columns = ['赛道','上榜数','总值', '强度', '比例强度', '主线值', '主线值排名', '前日差', '档位']
     field_t.to_excel('今日行业上榜.xlsx')
 
     
