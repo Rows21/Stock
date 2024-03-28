@@ -7,9 +7,9 @@ class Direction():
     def __init__(self, daily=False) -> None:
         self.daily = daily
         if self.daily == True:
-            self.style = pd.read_csv('./dlogs/style.csv').iloc[:,1:]
-            self.field = pd.read_csv('./dlogs/field.csv').iloc[:,1:]
-            self.disp = pd.read_csv('./dlogs/dispersion.csv').iloc[:,1:]
+            self.style = pd.read_csv('temp/style.csv').iloc[:,1:]
+            self.field = pd.read_csv('temp/field.csv').iloc[:,1:]
+            self.disp = pd.read_csv('temp/dispersion.csv').iloc[:,1:]
 
 
     def get_hist(self, date_list, df_close, df_close_adj, label):

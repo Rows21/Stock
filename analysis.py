@@ -16,7 +16,7 @@ def all_stock(token):
     return all
 
 class daily_in():
-    def __init__(self, date, token, path_hist='./longemo.csv') -> None:
+    def __init__(self, date, token, path_hist='temp/longemo.csv') -> None:
         self.date_str = date
         self.df_upratio = pd.read_csv(path_hist).iloc[:,1:]
         self.pas_param = True
@@ -34,7 +34,7 @@ class daily_in():
         self.daily = daily[~daily['ts_code'].str.contains('BJ')]
         self.trade_cal = cal[cal['is_open'] == 1]['pretrade_date'].unique()[:10]
         
-    def pre_close(self, path='./pre_close.csv', path_adj = './pre_close_adj.csv'):
+    def pre_close(self, path='temp/pre_close.csv', path_adj = 'temp/pre_close_adj.csv'):
         df_close = pd.read_csv(path).iloc[:,1:]
         df_close_adj = pd.read_csv(path_adj).iloc[:,1:]
 
@@ -90,8 +90,8 @@ class daily_in():
             for ind in na_ind:
                 df_close_adj.iloc[0,ind] = df_close_adj.iloc[1,ind]
 
-            df_close_adj.to_csv('pre_close_adj.csv')
-            df_close.to_csv('pre_close.csv')
+            df_close_adj.to_csv('temp/pre_close_adj.csv')
+            df_close.to_csv('temp/pre_close.csv')
             self.df_pre = df_close
 
         
@@ -140,7 +140,7 @@ class daily_in():
         return self.df_upratio
 
 class limit_times():
-    def __init__(self, date, token, path_hist='./lianban.csv') -> None:
+    def __init__(self, date, token, path_hist='temp/lianban.csv') -> None:
         self.date_str = date
         ts.set_token(token)
         self.pro = ts.pro_api()
@@ -221,7 +221,7 @@ class limit_times():
         return self.df_limit
 
 class short_in():
-    def __init__(self, date, token, path_hist1='./shortemo.csv', path_hist2='./short.csv') -> None:
+    def __init__(self, date, token, path_hist1='temp/shortemo.csv', path_hist2='temp/short.csv') -> None:
         self.date_str = date
         ts.set_token(token)
         self.pro = ts.pro_api()
@@ -342,7 +342,7 @@ if __name__ == '__main__':
     pro = ts.pro_api()
     stock_code = all_stock(token)
     
-    close = pd.read_csv('./longemo.csv').iloc[:,1:]
+    close = pd.read_csv('temp/longemo.csv').iloc[:,1:]
 
     cal = pro.trade_cal(exchange='SZSE', start_date=str(close['date'][len(close)-1]), end_date=time_c)
     time_l = cal[cal['is_open'] == 1]['cal_date'].tolist()
@@ -358,24 +358,24 @@ if __name__ == '__main__':
         # 更新收盘价
         pre20 = daily_in(time, token)
         df_L = pre20.get_today()
-        df_L.to_csv('longemo.csv')
+        df_L.to_csv('temp/longemo.csv')
         df_L.to_csv('.\\logs\\' + time + 'longemo.csv')
         
         
         # 更新连板数据
         lb = limit_times(time, token)
         df_LB = lb.get_today()
-        df_LB.to_csv('lianban.csv')
+        df_LB.to_csv('temp/lianban.csv')
         df_LB.to_csv('.\\logs\\' + time + 'lianban.csv')
 
         # short
-        df_close = pd.read_csv('./pre_close.csv').iloc[:,1:]
-        lianban = pd.read_csv('./lianban.csv').iloc[:,1:]
+        df_close = pd.read_csv('temp/pre_close.csv').iloc[:,1:]
+        lianban = pd.read_csv('temp/lianban.csv').iloc[:,1:]
         short = short_in(time, token)
         df_R, df_S = short.get_today(df_close, lianban)
-        df_R.to_csv('shortemo.csv')
+        df_R.to_csv('temp/shortemo.csv')
         df_R.to_csv('.\\logs\\' + time + 'shortemo.csv')
-        df_S.to_csv('short.csv')
+        df_S.to_csv('temp/short.csv')
         df_S.to_csv('.\\logs\\' + time + 'short.csv')
     
     print('设置时间戳：')
@@ -420,30 +420,36 @@ if __name__ == '__main__':
     # 数据导入
     print('------------------')
     print('开始方向计算：')
-    df_close = pd.read_csv('./pre_close.csv').iloc[:,1:]
-    df_close_adj = pd.read_csv('./pre_close_adj.csv').iloc[:,1:]
+    df_close = pd.read_csv('temp/pre_close.csv').iloc[:,1:]
+    df_close_adj = pd.read_csv('temp/pre_close_adj.csv').iloc[:,1:]
     label = pd.read_excel('RPS_label.xlsx', sheet_name='A股数据库20240206')
-    close = pd.read_csv('./dlogs/style.csv').iloc[:,1:]
+    close = pd.read_csv('temp/style.csv').iloc[:,1:]
 
     cal = pro.trade_cal(exchange='SZSE', start_date=str(close['date'][len(close)-1]), end_date=time_c)
     time_l = cal[cal['is_open'] == 1]['cal_date'].tolist()
     time_l.reverse()
 
     dire = Direction(daily=True)
+    if time_l != []:
+        style_ts, field_ts, disp, style_t, field_t = dire.get_hist(time_l[1:], df_close, df_close_adj,label)
+        style_ts.to_csv('.\\dlogs\\' + time + 'style.csv')
+        field_ts.to_csv('.\\dlogs\\' + time + 'field.csv')
+        disp.to_csv('.\\dlogs\\' + time + 'dispersion.csv')
+        style_ts.to_csv('temp/style.csv')
+        field_ts.to_csv('temp/field.csv')
+        disp.to_csv('temp/dispersion.csv')
+        style_ts.to_excel('风格.xlsx')
+        field_ts.to_excel('行业.xlsx')
+        disp.columns = ['date', '风格', '行业']
+        disp.to_excel('离散度.xlsx')
+        style_t.columns = ['赛道','上榜数','总值', '强度', '比例强度', '主线值', '主线值排名', '前日差', '档位']
+        style_t.to_excel('今日风格上榜.xlsx')
+        field_t.columns = ['赛道','上榜数','总值', '强度', '比例强度', '主线值', '主线值排名', '前日差', '档位']
+        field_t.to_excel('今日行业上榜.xlsx')
+    else:
+        print('方向已更新至最新。')
 
-    style_ts, field_ts, disp, style_t, field_t = dire.get_hist(time_l[1:], df_close, df_close_adj,label)
-
-    style_ts.to_csv('.\\dlogs\\' + time + 'style.csv')
-    field_ts.to_csv('.\\dlogs\\' + time + 'field.csv')
-    disp.to_csv('.\\dlogs\\' + time + 'dispersion.csv')
-    style_ts.to_excel('风格.xlsx')
-    field_ts.to_excel('行业.xlsx')
-    disp.columns = ['date', '风格', '行业']
-    disp.to_excel('离散度.xlsx')
-    style_t.columns = ['赛道','上榜数','总值', '强度', '比例强度', '主线值', '主线值排名', '前日差', '档位']
-    style_t.to_excel('今日风格上榜.xlsx')
-    field_t.columns = ['赛道','上榜数','总值', '强度', '比例强度', '主线值', '主线值排名', '前日差', '档位']
-    field_t.to_excel('今日行业上榜.xlsx')
+    
 
     
     

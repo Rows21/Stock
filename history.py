@@ -232,7 +232,7 @@ class History_M():
         df_hist['d10'] = av10
         df_hist['d20'] = av20
         '''
-        df_hist.to_csv('long_final.csv')
+        df_hist.to_csv('temp/long_final.csv')
 
         return df_hist
 
@@ -414,7 +414,7 @@ class History_L():
         # 使用 cut() 方法根据分位点划分数据，并生成新的一列 'B'
         df_hist['position'] = pd.cut(df_hist['weighted_emo'], bins=df_hist['weighted_emo'].quantile(quantiles), labels=['<10%', '10-42%', '42-58%', '58-90%', '>90%'])
 
-        df_hist.to_csv('lianban_final.csv')
+        df_hist.to_csv('temp/lianban_final.csv')
 
         return df_hist
 
@@ -590,7 +590,7 @@ class History_S():
         # 使用 cut() 方法根据分位点划分数据，并生成新的一列 'B'
         df_hist['position'] = pd.cut(df_hist['weighted_emo'], bins=df_hist['weighted_emo'].quantile(quantiles), labels=['<10%', '10-42%', '42-58%', '58-90%', '>90%'])
 
-        df_hist.to_csv('short_final.csv')
+        df_hist.to_csv('temp/short_final.csv')
 
         return df_hist
     
