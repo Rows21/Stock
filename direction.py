@@ -208,12 +208,13 @@ class Direction():
             field_r = disp.iloc[0:(i+1),]['field'].rank(ascending=False)
             field[i] = 1 - field_r[i]/len(disp)
 
-            total[i] = 0.7*style_r[i] + 0.3*field_r[i] + 1
+            total[i] = 0.7*style[i] + 0.3*field[i] + 1
             med[i] = np.median(total[:(i+1)])
 
         disp['style_r'] = style
         disp['field_r'] = field
         disp['total'] = total
+        disp['med'] = med
 
         return disp
         
