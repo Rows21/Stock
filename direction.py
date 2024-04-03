@@ -194,6 +194,28 @@ class Direction():
         else:
             return style_ts, field_ts, disp
 
+    def get_timeseries(self, disp: pd.DataFrame):
+        date_list = disp['date'].tolist()
+
+        style = [None] * len(disp)
+        field = [None] * len(disp)
+        total = [None] * len(disp)
+        med = [None] * len(disp)
+        for i, date in enumerate(date_list):
+            style_r = disp.iloc[0:(i+1),]['style'].rank(ascending=False)
+            style[i] = 1 - style_r[i]/len(disp)
+            
+            field_r = disp.iloc[0:(i+1),]['field'].rank(ascending=False)
+            field[i] = 1 - field_r[i]/len(disp)
+
+            total[i] = 0.7*style_r[i] + 0.3*field_r[i] + 1
+            med[i] = np.median(total[:(i+1)])
+
+        disp['style_r'] = style
+        disp['field_r'] = field
+        disp['total'] = total
+
+        return disp
         
 
 if __name__ == '__main__':

@@ -431,7 +431,7 @@ if __name__ == '__main__':
 
     dire = Direction(daily=True)
     if time_l != []:
-        style_ts, field_ts, disp, style_t, field_t = dire.get_hist(time_l[1:], df_close, df_close_adj,label)
+        style_ts, field_ts, disp, style_t, field_t = dire.get_hist(time_l, df_close, df_close_adj, label)
         style_ts.to_csv('.\\dlogs\\' + time + 'style.csv')
         field_ts.to_csv('.\\dlogs\\' + time + 'field.csv')
         disp.to_csv('.\\dlogs\\' + time + 'dispersion.csv')
@@ -441,7 +441,7 @@ if __name__ == '__main__':
         style_ts.to_excel('风格.xlsx')
         field_ts.to_excel('行业.xlsx')
         disp.columns = ['date', '风格', '行业']
-        disp.to_excel('离散度.xlsx')
+        
         style_t.columns = ['赛道','上榜数','总值', '强度', '比例强度', '主线值', '主线值排名', '前日差', '档位']
         style_t.to_excel('今日风格上榜.xlsx')
         field_t.columns = ['赛道','上榜数','总值', '强度', '比例强度', '主线值', '主线值排名', '前日差', '档位']
@@ -449,6 +449,9 @@ if __name__ == '__main__':
     else:
         print('方向已更新至最新。')
 
+    disp = pd.read_csv('temp/dispersion.csv').iloc[:,1:]
+    df_disp = dire.get_timeseries(disp)
+    disp.to_excel('离散度.xlsx')
     
 
     
