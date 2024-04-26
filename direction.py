@@ -11,6 +11,25 @@ class Direction():
             self.field = pd.read_csv('temp/field.csv').iloc[:,1:]
             self.disp = pd.read_csv('temp/dispersion.csv').iloc[:,1:]
 
+    def _rank1(self, df, name='Value'):
+        counter11 = Counter(df['一阶1']) + Counter(df['一阶2'])
+        counter21 = Counter(df['模糊1']) + Counter(df['模糊2'])
+        counter_main = counter11 + Counter({key: value * 0.3 for key, value in counter21.items()})
+        del counter_main[0]
+        counter_dict = dict(counter_main)
+        data = [[key, value] for key, value in counter_dict.items()]
+        style_main = pd.DataFrame(data, columns=['Key', name])
+        return style_main
+    
+    def _rank2(self, df, name='Value'):
+        counter12 = Counter(df['二阶1']) + Counter(df['二阶2']) + Counter(df['二阶3'])
+        counter22 = Counter(df['模糊1.1']) + Counter(df['模糊2.1'])
+        counter_main = counter12 + Counter({key: value * 0.3 for key, value in counter22.items()})
+        del counter_main[0]
+        counter_dict = dict(counter_main)
+        data = [[key, value] for key, value in counter_dict.items()]
+        field_all = pd.DataFrame(data, columns=['Key', name])
+        return field_all
 
     def get_hist(self, date_list, df_close, df_close_adj, label):
         
@@ -27,23 +46,11 @@ class Direction():
         #progress_bar = tqdm(total=len(date_list[20:]), ncols=200)
         #all_date = len(date_list[20:])
         # total
-        counter11 = Counter(label['一阶1']) + Counter(label['一阶2'])
-        counter21 = Counter(label['模糊1']) + Counter(label['模糊2'])
-        counter_main = counter11 + Counter({key: value * 0.3 for key, value in counter21.items()})
-        del counter_main[0]
-        counter_dict = dict(counter_main)
-        data = [[key, value] for key, value in counter_dict.items()]
-        style_all = pd.DataFrame(data, columns=['Key', 'Value'])
+        style_all = self._rank1(label)
         if style_ts is None:
             style_ts = pd.DataFrame(columns = ['date'] + style_all['Key'].tolist())
 
-        counter12 = Counter(label['二阶1']) + Counter(label['二阶2']) + Counter(label['二阶3'])
-        counter22 = Counter(label['模糊1.1']) + Counter(label['模糊2.1'])
-        counter_main = counter12 + Counter({key: value * 0.3 for key, value in counter22.items()})
-        del counter_main[0]
-        counter_dict = dict(counter_main)
-        data = [[key, value] for key, value in counter_dict.items()]
-        field_all = pd.DataFrame(data, columns=['Key', 'Value'])
+        field_all = self._rank2(label)
         if field_ts is None:
             field_ts = pd.DataFrame(columns = ['date'] + field_all['Key'].tolist())
 
@@ -67,7 +74,8 @@ class Direction():
 
             # 涨跌幅
             for day in [2,3,5,10,20]:
-                chgi = df_20.iloc[0,1:]/df_20.iloc[day,1:]
+                print(df_20.iloc[day-1][0])
+                chgi = df_20.iloc[0,1:]/df_20.iloc[day-1,1:]
                 if rps_df is None:
                     rps_df = pd.DataFrame(chgi.index, columns = ['证券代码'])
                 rps_df['chg' + str(day)] = chgi.tolist()
@@ -89,42 +97,15 @@ class Direction():
             #rps_df = rps_df.dropna()
             main_top_300, short_top_300 = rps_df.nlargest(300, 'main'), rps_df.nlargest(300, 'short')
             
-            # 主线上榜
-            counter11 = Counter(main_top_300['一阶1']) + Counter(main_top_300['一阶2'])
-            counter21 = Counter(main_top_300['模糊1']) + Counter(main_top_300['模糊2'])
-            counter_main = counter11 + Counter({key: value * 0.3 for key, value in counter21.items()})
-            del counter_main[0]
-            counter_dict = dict(counter_main)
-            data = [[key, value] for key, value in counter_dict.items()]
-            style_main = pd.DataFrame(data, columns=['Key', 'count'])
-
-            counter12 = Counter(main_top_300['二阶1']) + Counter(main_top_300['二阶2']) + Counter(main_top_300['二阶3'])
-            counter22 = Counter(main_top_300['模糊1.1']) + Counter(main_top_300['模糊2.1'])
-            counter_main = counter12 + Counter({key: value * 0.3 for key, value in counter22.items()})
-            del counter_main[0]
-            counter_dict = dict(counter_main)
-            data = [[key, value] for key, value in counter_dict.items()]
-            field_main = pd.DataFrame(data, columns=['Key', 'count'])
-
+            # 主线上榜 
+            style_main = self._rank1(main_top_300, name='count')
+            field_main = self._rank2(main_top_300, name='count')
             strength_list = [style_main, field_main]
             
             if self.daily:
-                # 短期上榜
-                counter11 = Counter(short_top_300['一阶1']) + Counter(short_top_300['一阶2'])
-                counter21 = Counter(short_top_300['模糊1']) + Counter(short_top_300['模糊2'])
-                counter_main = counter11 + Counter({key: value * 0.3 for key, value in counter21.items()})
-                del counter_main[0]
-                counter_dict = dict(counter_main)
-                data = [[key, value] for key, value in counter_dict.items()]
-                style_short = pd.DataFrame(data, columns=['Key', 'count'])
-
-                counter12 = Counter(short_top_300['二阶1']) + Counter(short_top_300['二阶2']) + Counter(short_top_300['二阶3'])
-                counter22 = Counter(short_top_300['模糊1.1']) + Counter(short_top_300['模糊2.1'])
-                counter_main = counter12 + Counter({key: value * 0.3 for key, value in counter22.items()})
-                del counter_main[0]
-                counter_dict = dict(counter_main)
-                data = [[key, value] for key, value in counter_dict.items()]
-                field_short = pd.DataFrame(data, columns=['Key', 'count'])
+                # 短期上榜-试错
+                style_short = self._rank1(short_top_300, name='count')
+                field_short = self._rank2(short_top_300, name='count')
 
                 strength_list = [style_main, field_main, style_short, field_short]
 
@@ -137,17 +118,18 @@ class Direction():
                     lab = style_all
                 else:
                     lab = field_all
-
+                
+                # 强度 比例强度
                 df = pd.merge(df,lab,how='outer',on='Key')
                 df['vol'] = (df['count'] - np.min(df['count'])) / (np.max(df['count']) - np.min(df['count']))
                 df['vol_ratio'] = (df['count']/df['Value'] - np.min(df['count']/df['Value'])) / (np.max(df['count']/df['Value']) - np.min(df['count']/df['Value']))
 
-                # OUT5-8
+                # OUT5-8 值
                 df['prior'] = df['vol'] * 0.7 + df['vol_ratio'] * 0.3
-                # OUT9-12
+                # OUT9-12 排名
                 df['prior_rank'] = df['prior'].rank(ascending=False)
                 
-                # OUT13-16
+                # OUT13-16 排名变动
                 if i > 0:
                     df['rank_dif'] = df['prior_rank'] - last_rank[k]['prior_rank']
                     
@@ -222,7 +204,7 @@ class Direction():
 if __name__ == '__main__':
     import tushare as ts
     # 获取今天的日期
-    time = pd.to_datetime('2024-01-03')
+    time = pd.to_datetime('2024-02-08')
     formatted_time = time.strftime("%Y%m%d")
 
     # token
@@ -230,43 +212,17 @@ if __name__ == '__main__':
     ts.set_token(token)
     pro = ts.pro_api()
 
-    # 检查数据
-    # 获取去年的1月1日日期并格式化
-    # last_year_date = datetime(time.year - 1, 1, 1).date()
-    last_year_date = pd.to_datetime('2018-01-01')
-    formatted_date = last_year_date.strftime("%Y%m%d")
-    
-    # 提取交易日历
-    date_df = pro.trade_cal(exchange='SZSE', start_date=formatted_date, end_date=formatted_time)
-    opendate_df = date_df[date_df['is_open'] == 1]
-
-    # 提取当日交易数据
-    today_df = pro.limit_list_d(trade_date=formatted_time, limit_type='U', fields='ts_code,trade_date,industry,name,limit,pct_chg,open_times,limit_amount,fd_amount,first_time,last_time,up_stat,limit_times')
-    # 检查是否为空 如果为空 把上个交易日设置为当日
-    if today_df.empty:
-        formatted_time = opendate_df['cal_date'].iloc[0]
-        # 获取去年的第一个交易日
-        #last_year_date = datetime(int(formatted_time[:4]) - 1, 1, 1).date()
-        #formatted_date = last_year_date.strftime("%Y%m%d")
-        
-        # 提取交易日历
-        date_df = pro.trade_cal(exchange='SZSE', start_date=formatted_date, end_date=formatted_time)
-        opendate_df = date_df[date_df['is_open'] == 1]
-
-    # 生成交易日历
-    date_list = list(opendate_df['pretrade_date'])
-
-    # 历史数据生成
-    df_close = pd.read_csv('./pre_close.csv').iloc[:,1:]
-    df_close_adj = pd.read_csv('./pre_close_adj.csv').iloc[:,1:]
-
+    print('------------------')
+    print('开始方向计算：')
+    df_close = pd.read_csv('temp/pre_close.csv').iloc[:,1:]
+    df_close_adj = pd.read_csv('temp/pre_close_adj.csv').iloc[:,1:]
     label = pd.read_excel('RPS_label.xlsx', sheet_name='A股数据库20240206')
-    direc = Direction() 
-    style_ts, field_ts, disp = direc.get_hist(date_list, df_close, df_close_adj,label)
-    style_ts.to_csv('.\\dlogs\\style.csv')
-    style_ts.to_excel('风格.xlsx')
-    field_ts.to_excel('行业.xlsx')
-    field_ts.to_csv('.\\dlogs\\field.csv')
-    disp.to_csv('.\\dlogs\\dispersion.csv')
-    disp.columns = ['date', '风格', '行业']
-    disp.to_excel('离散度.xlsx')
+    close = pd.read_csv('dlogs/style.csv').iloc[:,1:]
+
+    cal = pro.trade_cal(exchange='SZSE', start_date=str(close['date'][len(close)-1]), end_date=formatted_time)
+    time_l = cal[cal['is_open'] == 1]['cal_date'].tolist()
+    time_l.reverse()
+
+    dire = Direction(daily=True)
+    if time_l != []:
+        style_ts, field_ts, disp, style_t, field_t = dire.get_hist(time_l, df_close, df_close_adj, label)
