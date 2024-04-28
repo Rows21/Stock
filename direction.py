@@ -68,14 +68,15 @@ class Direction():
             ind_today = int(df_close[df_close['trade_date'] == int(date)].index.values)
             ind_pre = int(df_close[df_close['trade_date'] == int(date_20)].index.values)
             df_20: pd.DataFrame = df_close_adj.iloc[ind_today:(ind_pre+1),].reset_index(drop=True)
-
+            
             rps_df = None            
             df_20.iloc[0,:] = df_close[df_close['trade_date'] == int(date)].values
+            df_20 = df_20.dropna(axis=1)
 
             # 涨跌幅
             for day in [2,3,5,10,20]:
-                print(df_20.iloc[day-1][0])
-                chgi = df_20.iloc[0,1:]/df_20.iloc[day-1,1:]
+                print(df_20.iloc[day][0])
+                chgi = df_20.iloc[0,1:]/df_20.iloc[day,1:] - 1
                 if rps_df is None:
                     rps_df = pd.DataFrame(chgi.index, columns = ['证券代码'])
                 rps_df['chg' + str(day)] = chgi.tolist()
@@ -85,7 +86,7 @@ class Direction():
             # RPS
             for day in [2,3,5,10,20]:
                 ranki = rps_df['chg' + str(day)].rank(ascending=False)
-                rps_df['rps'+str(day)] = (1-ranki/ranki.shape[0])*ranki
+                rps_df['rps'+str(day)] = (1-ranki/ranki.shape[0])*100
             
             mainrps_params = [0.05, 0.05, 0.1, 0.15, 0.65]
             shortrps_params = [0.2, 0.5, 0.3]
@@ -96,6 +97,11 @@ class Direction():
             rps_df: pd.DataFrame = pd.merge(rps_df,label,on='证券代码',how='right')
             #rps_df = rps_df.dropna()
             main_top_300, short_top_300 = rps_df.nlargest(300, 'main'), rps_df.nlargest(300, 'short')
+            main_top_300 = main_top_300.replace({np.inf: np.nan, -np.inf: np.nan})
+            main_top_300 = main_top_300.dropna()
+
+            short_top_300 = short_top_300.replace({np.inf: np.nan, -np.inf: np.nan})
+            short_top_300 = short_top_300.dropna()
             
             # 主线上榜 
             style_main = self._rank1(main_top_300, name='count')
