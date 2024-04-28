@@ -75,7 +75,7 @@ class Direction():
 
             # 涨跌幅
             for day in [2,3,5,10,20]:
-                print(df_20.iloc[day][0])
+                #print(df_20.iloc[day][0])
                 chgi = df_20.iloc[0,1:]/df_20.iloc[day,1:] - 1
                 if rps_df is None:
                     rps_df = pd.DataFrame(chgi.index, columns = ['证券代码'])
@@ -210,7 +210,7 @@ class Direction():
 if __name__ == '__main__':
     import tushare as ts
     # 获取今天的日期
-    time = pd.to_datetime('2024-02-08')
+    time = pd.to_datetime('2024-03-05')
     formatted_time = time.strftime("%Y%m%d")
 
     # token
@@ -225,10 +225,11 @@ if __name__ == '__main__':
     label = pd.read_excel('RPS_label.xlsx', sheet_name='A股数据库20240206')
     close = pd.read_csv('dlogs/style.csv').iloc[:,1:]
 
-    cal = pro.trade_cal(exchange='SZSE', start_date=str(close['date'][len(close)-1]), end_date=formatted_time)
+    cal = pro.trade_cal(exchange='SZSE', start_date='20200101', end_date=formatted_time)
     time_l = cal[cal['is_open'] == 1]['cal_date'].tolist()
-    time_l.reverse()
+    #time_l.reverse()
 
-    dire = Direction(daily=True)
+    dire = Direction(daily=False)
     if time_l != []:
-        style_ts, field_ts, disp, style_t, field_t = dire.get_hist(time_l, df_close, df_close_adj, label)
+        style_ts, field_ts, disp = dire.get_hist(time_l, df_close, df_close_adj, label)
+    
